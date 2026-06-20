@@ -140,6 +140,7 @@ def scrape(
                 is_remote=is_remote,
                 results_wanted=results_wanted,
             )
+            print(f"[JobSpy] Scraped query '{title}' for country {cc}: found {len(jobs)} jobs")
 
             for job in jobs:
                 if job["url"] not in seen_urls:
