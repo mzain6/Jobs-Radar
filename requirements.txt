@@ -4,3 +4,4 @@ requests
 python-jobspy
 pandas
 psycopg2-binary
+playwright
