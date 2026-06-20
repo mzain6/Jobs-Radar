@@ -24,11 +24,14 @@ HEADERS = {
 
 GREENHOUSE_TOKENS = [
     "gitlab",
-    "automattic",
-    "doist",
-    "zapier",
+    "stripe",
+    "airbnb",
+    "figma",
+    "reddit",
+    "okta",
+    "cloudflare",
+    "mongodb",
     "elastic",
-    "github",
     "webflow",
     "discord",
     "robinhood",
@@ -37,8 +40,8 @@ GREENHOUSE_TOKENS = [
 LEVER_SLUGS = [
     "netflix",
     "plaid",
-    "shopify",
-    "rippling",
+    "palantir",
+    "atlassian",
 ]
 
 
