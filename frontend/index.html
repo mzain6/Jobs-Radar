@@ -751,19 +751,11 @@ async function triggerScan() {
     if (!res.ok) throw new Error(data.detail || 'Scan request failed');
 
     status.className = 'success';
-    status.innerHTML = `✓ Scan started in background. Refreshing listings...`;
+    status.innerHTML = `✓ Scan triggered! Scrapers are running in the background.`;
 
-    // Poll for updates every 5 seconds for the next 90 seconds
-    let pollCount = 0;
-    const pollInterval = setInterval(async () => {
-      await loadJobs();
-      await loadStats();
-      pollCount++;
-      if (pollCount >= 18) { // 90 seconds max
-        clearInterval(pollInterval);
-        status.innerHTML = `✓ Scan check complete.`;
-      }
-    }, 5000);
+    // Load current jobs and stats once without looping
+    await loadJobs();
+    await loadStats();
 
   } catch (err) {
     status.className = 'error';
