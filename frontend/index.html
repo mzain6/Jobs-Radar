@@ -732,7 +732,7 @@ async function triggerScan() {
   icon.innerHTML = '<span class="spin-icon">◌</span>';
   tableWrap.classList.add('scanning');
   status.className = '';
-  status.innerHTML = '<span class="spin-icon">◌</span> Scanning sources — this may take 20–60 seconds…';
+  status.innerHTML = '<span class="spin-icon">◌</span> Starting background scan...';
 
   const body = {
     work_mode: workMode,
@@ -741,7 +741,7 @@ async function triggerScan() {
   };
 
   try {
-    const res  = await fetch('/api/scrape', {
+    const res  = await fetch('/api/scrape?async=true', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(body),
@@ -750,17 +750,29 @@ async function triggerScan() {
 
     if (!res.ok) throw new Error(data.detail || 'Scrape failed');
 
-    status.className = 'success';
-    status.innerHTML = `✓ Scraped ${data.scraped} listings — ${data.new} new jobs added.`;
+    status.className = '';
+    status.innerHTML = `📡 Radar scanning — fetching fresh listings in background...`;
 
-    // Refresh the table
-    await loadJobs();
-    await loadStats();
+    // Poll for new jobs every 5 seconds for the next 75 seconds
+    let secondsLeft = 75;
+    const pollInterval = setInterval(async () => {
+      secondsLeft -= 5;
+      await loadJobs();
+      await loadStats();
+      if (secondsLeft <= 0) {
+        clearInterval(pollInterval);
+        btn.disabled = false;
+        icon.textContent = '◎';
+        tableWrap.classList.remove('scanning');
+        status.className = 'success';
+        status.innerHTML = `✓ Scan cycle completed. View new listings below.`;
+        isScanning = false;
+      }
+    }, 5000);
 
   } catch (err) {
     status.className = 'error';
     status.innerHTML = `✗ Error: ${err.message}`;
-  } finally {
     btn.disabled = false;
     icon.textContent = '◎';
     tableWrap.classList.remove('scanning');
