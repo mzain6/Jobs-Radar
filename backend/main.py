@@ -46,8 +46,13 @@ class ScrapeRequest(BaseModel):
 
 # ─── Scrape Worker ───────────────────────────────────────────────────────────
 
+is_scraping = False
+
 def run_scrape(req: ScrapeRequest) -> tuple[int, int]:
     """Helper to run scrapers synchronously and return (total_scraped, new_inserted)."""
+    global is_scraping
+    is_scraping = True
+    
     work_mode = req.work_mode
     country   = req.country
     location  = req.location.strip() if req.location else None
@@ -55,56 +60,67 @@ def run_scrape(req: ScrapeRequest) -> tuple[int, int]:
     total_scraped = 0
     total_new = 0
 
-    # ── We Work Remotely ──────────────────────────────────────────────────────
     try:
-        print("[WWR] Starting scrape...")
-        wwr_jobs = weworkremotely.scrape(
-            work_mode=work_mode,
-            country=country,
-            location=location,
-        )
-        scraped, new = upsert_jobs(wwr_jobs)
-        total_scraped += scraped
-        total_new += new
-        print(f"[WWR] Finished scrape: fetched {scraped} jobs, {new} new database inserts")
-    except Exception as exc:
-        print(f"[WWR] Scraper error: {exc}")
+        # ── We Work Remotely ──────────────────────────────────────────────────────
+        try:
+            print("[WWR] Starting scrape...")
+            wwr_jobs = weworkremotely.scrape(
+                work_mode=work_mode,
+                country=country,
+                location=location,
+            )
+            scraped, new = upsert_jobs(wwr_jobs)
+            total_scraped += scraped
+            total_new += new
+            print(f"[WWR] Finished scrape: fetched {scraped} jobs, {new} new database inserts")
+        except Exception as exc:
+            print(f"[WWR] Scraper error: {exc}")
 
-    # ── Greenhouse + Lever ────────────────────────────────────────────────────
-    try:
-        print("[Greenhouse/Lever] Starting scrape...")
-        gl_jobs = greenhouse_lever.scrape(
-            work_mode=work_mode,
-            country=country,
-            location=location,
-        )
-        scraped, new = upsert_jobs(gl_jobs)
-        total_scraped += scraped
-        total_new += new
-        print(f"[Greenhouse/Lever] Finished scrape: fetched {scraped} jobs, {new} new database inserts")
-    except Exception as exc:
-        print(f"[Greenhouse/Lever] Scraper error: {exc}")
+        # ── Greenhouse + Lever ────────────────────────────────────────────────────
+        try:
+            print("[Greenhouse/Lever] Starting scrape...")
+            gl_jobs = greenhouse_lever.scrape(
+                work_mode=work_mode,
+                country=country,
+                location=location,
+            )
+            scraped, new = upsert_jobs(gl_jobs)
+            total_scraped += scraped
+            total_new += new
+            print(f"[Greenhouse/Lever] Finished scrape: fetched {scraped} jobs, {new} new database inserts")
+        except Exception as exc:
+            print(f"[Greenhouse/Lever] Scraper error: {exc}")
 
-    # ── JobSpy (Indeed + LinkedIn) ────────────────────────────────────────────
-    try:
-        print("[JobSpy] Starting scrape (Indeed & LinkedIn)...")
-        js_jobs = jobspy_source.scrape(
-            work_mode=work_mode,
-            country=country,
-            location=location,
-        )
-        scraped, new = upsert_jobs(js_jobs)
-        total_scraped += scraped
-        total_new += new
-        print(f"[JobSpy] Finished scrape: fetched {scraped} jobs, {new} new database inserts")
-    except Exception as exc:
-        print(f"[JobSpy] Scraper error: {exc}")
+        # ── JobSpy (Indeed + LinkedIn) ────────────────────────────────────────────
+        try:
+            print("[JobSpy] Starting scrape (Indeed & LinkedIn)...")
+            js_jobs = jobspy_source.scrape(
+                work_mode=work_mode,
+                country=country,
+                location=location,
+            )
+            scraped, new = upsert_jobs(js_jobs)
+            total_scraped += scraped
+            total_new += new
+            print(f"[JobSpy] Finished scrape: fetched {scraped} jobs, {new} new database inserts")
+        except Exception as exc:
+            print(f"[JobSpy] Scraper error: {exc}")
 
-    print(f"[Scraper] All scrapers completed. Total scraped: {total_scraped}, Total new inserts: {total_new}")
+        print(f"[Scraper] All scrapers completed. Total scraped: {total_scraped}, Total new inserts: {total_new}")
+    finally:
+        is_scraping = False
+        
     return total_scraped, total_new
 
 
 # ─── API routes ──────────────────────────────────────────────────────────────
+
+@app.get("/api/scrape/status")
+async def api_scrape_status():
+    """Return whether a scraping job is currently running."""
+    global is_scraping
+    return {"is_scraping": is_scraping}
+
 
 @app.get("/api/jobs")
 async def api_get_jobs(
