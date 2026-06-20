@@ -144,3 +144,23 @@ async def api_scrape(
     else:
         scraped, new = run_scrape(req)
         return {"scraped": scraped, "new": new}
+
+
+@app.get("/api/scrape")
+async def api_scrape_get(
+    background_tasks: BackgroundTasks,
+    work_mode: str = Query("remote"),
+    country: str = Query("all"),
+    location: Optional[str] = Query(None),
+    async_scrape: bool = Query(True, alias="async")
+):
+    """
+    HTTP GET wrapper to trigger a scrape. Defaults to async=True so browser/cron hits return immediately.
+    """
+    req = ScrapeRequest(work_mode=work_mode, country=country, location=location)
+    if async_scrape:
+        background_tasks.add_task(run_scrape, req)
+        return {"status": "queued", "message": "Scraping task queued in background"}
+    else:
+        scraped, new = run_scrape(req)
+        return {"scraped": scraped, "new": new}
