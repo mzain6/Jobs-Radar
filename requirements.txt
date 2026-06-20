@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+requests
+python-jobspy
+pandas
+psycopg2-binary

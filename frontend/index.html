@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Remote Job Radar — Real-time Job Scanner</title>
+  <meta name="description" content="Self-hosted job aggregator scanning We Work Remotely, Greenhouse, Lever, Indeed and LinkedIn for remote and on-site opportunities in the US, Canada, and Pakistan." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Design tokens ─────────────────────────────────────────────── */
+    :root {
+      --bg:        #0F1419;
+      --surface:   #161D26;
+      --surface2:  #1C2533;
+      --border:    #2A3540;
+      --border2:   #354555;
+      --text:      #E8EDF2;
+      --muted:     #8B98A5;
+      --amber:     #FFB000;
+      --amber-dim: #CC8C00;
+      --teal:      #4FD1C5;
+      --teal-dim:  #2FA89E;
+      --green:     #3DDC97;
+      --red:       #FF5C5C;
+      --mono:      'IBM Plex Mono', monospace;
+      --sans:      'Inter', sans-serif;
+      --radius:    6px;
+      --radius-lg: 10px;
+      --transition: 0.18s ease;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── Scrollbar ─────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    /* ── Utility ───────────────────────────────────────────────────── */
+    .mono { font-family: var(--mono); }
+    .muted { color: var(--muted); }
+    .amber { color: var(--amber); }
+    .teal  { color: var(--teal); }
+
+    /* ── Topbar ────────────────────────────────────────────────────── */
+    #topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15, 20, 25, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      gap: 16px;
+    }
+
+    #topbar .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    #topbar .brand .logo {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--amber);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      animation: pulse-ring 3s ease-in-out infinite;
+    }
+
+    #topbar .brand .logo::after {
+      content: '';
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: var(--amber);
+      border-radius: 50%;
+      animation: pulse-dot 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse-ring {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,176,0,0.4); }
+      50%       { box-shadow: 0 0 0 8px rgba(255,176,0,0); }
+    }
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50%       { transform: scale(0.7); opacity: 0.6; }
+    }
+
+    #topbar .brand h1 {
+      font-family: var(--mono);
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: var(--text);
+    }
+    #topbar .brand h1 span { color: var(--amber); }
+
+    #job-counter {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 4px 12px;
+      white-space: nowrap;
+    }
+    #job-counter strong { color: var(--amber); }
+
+    #topbar .right { display: flex; align-items: center; gap: 10px; }
+
+    #btn-scan {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      background: var(--amber);
+      color: #0F1419;
+      border: none;
+      border-radius: var(--radius);
+      padding: 8px 20px;
+      cursor: pointer;
+      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #btn-scan:hover:not(:disabled) {
+      background: #ffc233;
+      box-shadow: 0 0 18px rgba(255,176,0,0.35);
+      transform: translateY(-1px);
+    }
+    #btn-scan:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .spin-icon {
+      display: inline-block;
+      animation: spin 0.9s linear infinite;
+      line-height: 1;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Main layout ───────────────────────────────────────────────── */
+    #app {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px 24px 60px;
+    }
+
+    /* ── Panel / card wrapper ──────────────────────────────────────── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      margin-bottom: 14px;
+    }
+
+    .panel-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    /* ── Form controls ─────────────────────────────────────────────── */
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .field label {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    input[type="text"] {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 13px;
+      padding: 7px 12px;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      width: 220px;
+    }
+    input[type="text"]:focus {
+      border-color: var(--amber);
+      box-shadow: 0 0 0 2px rgba(255,176,0,0.15);
+    }
+    input[type="text"]::placeholder { color: var(--muted); opacity: 0.7; }
+
+    /* ── Toggle button group ────────────────────────────────────────── */
+    .toggle-group {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .toggle-group button {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      background: var(--bg);
+      color: var(--muted);
+      border: none;
+      border-right: 1px solid var(--border);
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition);
+      white-space: nowrap;
+    }
+    .toggle-group button:last-child { border-right: none; }
+    .toggle-group button:hover { background: var(--surface2); color: var(--text); }
+    .toggle-group button.active {
+      background: var(--amber);
+      color: #0F1419;
+      font-weight: 600;
+    }
+    .toggle-group button.active-teal {
+      background: var(--teal);
+      color: #0F1419;
+      font-weight: 600;
+    }
+
+
+
+    /* ── Scan status ────────────────────────────────────────────────── */
+    #scan-status {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--amber);
+      min-height: 20px;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #scan-status.success { color: var(--green); }
+    #scan-status.error   { color: var(--red); }
+
+    /* ── Table section ──────────────────────────────────────────────── */
+    #table-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    /* ── Scan-line animation ─────────────────────────────────────────── */
+    #table-header-wrap {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .scan-line {
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 176, 0, 0.06) 40%,
+        rgba(255, 176, 0, 0.18) 50%,
+        rgba(255, 176, 0, 0.06) 60%,
+        transparent 100%
+      );
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .scanning .scan-line {
+      opacity: 1;
+      animation: sweep 1.6s ease-in-out infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .scanning .scan-line { animation: none; opacity: 0; }
+      .spin-icon { animation: none; }
+      @keyframes pulse-ring { 0%, 100% { box-shadow: none; } }
+    }
+
+    @keyframes sweep {
+      0%   { left: -60%; }
+      100% { left: 110%; }
+    }
+
+    /* ── Table header ──────────────────────────────────────────────── */
+    .table-header {
+      display: grid;
+      grid-template-columns: 110px 1fr 160px 160px 60px 100px 90px;
+      gap: 0;
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .th {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      text-transform: uppercase;
+      user-select: none;
+    }
+
+    /* ── Table body ─────────────────────────────────────────────────── */
+    #job-list { min-height: 200px; }
+
+    .job-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 160px 160px 60px 100px 90px;
+      gap: 0;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      transition: background var(--transition);
+      animation: fadeInRow 0.3s ease both;
+    }
+    .job-row:last-child { border-bottom: none; }
+    .job-row:hover { background: var(--surface2); }
+
+    @keyframes fadeInRow {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Cell styles ────────────────────────────────────────────────── */
+    .cell { padding-right: 12px; overflow: hidden; }
+
+    .source-tag {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .src-weworkremotely  { background: rgba(255,176,0,0.12);  color: var(--amber); border: 1px solid rgba(255,176,0,0.25); }
+    .src-greenhouse      { background: rgba(61,220,151,0.12); color: var(--green); border: 1px solid rgba(61,220,151,0.25); }
+    .src-lever           { background: rgba(79,209,197,0.12); color: var(--teal);  border: 1px solid rgba(79,209,197,0.25); }
+    .src-indeed          { background: rgba(255,92,92,0.12);  color: var(--red);   border: 1px solid rgba(255,92,92,0.25); }
+    .src-linkedin        { background: rgba(100,160,255,0.12);color: #64A0FF;      border: 1px solid rgba(100,160,255,0.25); }
+    .src-jobspy          { background: rgba(139,152,165,0.12);color: var(--muted); border: 1px solid rgba(139,152,165,0.25); }
+
+    .job-title-link {
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 13px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      transition: color var(--transition);
+    }
+    .job-title-link:hover { color: var(--amber); text-decoration: underline; }
+
+    .cell-company {
+      font-size: 13px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cell-location {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .country-badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .badge-US { background: rgba(100,160,255,0.12); color: #64A0FF; border: 1px solid rgba(100,160,255,0.2); }
+    .badge-CA { background: rgba(79,209,197,0.12);  color: var(--teal);  border: 1px solid rgba(79,209,197,0.2); }
+    .badge-PK { background: rgba(61,220,151,0.12);  color: var(--green); border: 1px solid rgba(61,220,151,0.2); }
+    .badge-   { background: rgba(139,152,165,0.1);  color: var(--muted); border: 1px solid rgba(139,152,165,0.2); }
+
+    .cell-date {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .remote-badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+    .remote-yes { background: rgba(61,220,151,0.12); color: var(--green); border: 1px solid rgba(61,220,151,0.2); }
+    .remote-no  { background: rgba(255,92,92,0.10);  color: var(--red);   border: 1px solid rgba(255,92,92,0.2); }
+
+    /* ── Empty state ─────────────────────────────────────────────────── */
+    #empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 24px;
+      text-align: center;
+      gap: 16px;
+    }
+    #empty-state .radar-icon {
+      font-size: 56px;
+      line-height: 1;
+      opacity: 0.4;
+    }
+    #empty-state h2 {
+      font-family: var(--mono);
+      font-size: 16px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    #empty-state p {
+      font-size: 13px;
+      color: var(--muted);
+      max-width: 360px;
+      opacity: 0.7;
+    }
+    #empty-state .cta-hint {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--amber);
+      margin-top: 8px;
+    }
+    #empty-state .cta-hint .arrow { font-size: 18px; animation: bounce-left 1.4s ease-in-out infinite; }
+    @keyframes bounce-left {
+      0%, 100% { transform: translateX(0); }
+      50%       { transform: translateX(-6px); }
+    }
+
+    /* ── Loading skeleton ───────────────────────────────────────────── */
+    .skeleton-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 160px 160px 60px 100px 90px;
+      gap: 0;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+    }
+    .skeleton-cell {
+      height: 14px;
+      background: linear-gradient(90deg, var(--border) 25%, var(--surface2) 50%, var(--border) 75%);
+      background-size: 200% 100%;
+      border-radius: 3px;
+      margin-right: 12px;
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Stats bar ───────────────────────────────────────────────────── */
+    #stats-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .stat-chip {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 4px 10px;
+      white-space: nowrap;
+    }
+    .stat-chip span { color: var(--text); font-weight: 600; }
+
+    /* ── Pagination / load more ─────────────────────────────────────── */
+    #load-more-wrap {
+      padding: 16px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+      display: none;
+    }
+    #btn-load-more {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 7px 20px;
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition), border-color var(--transition);
+    }
+    #btn-load-more:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+
+    /* ── Responsive — cards under 600 px ──────────────────────────── */
+    @media (max-width: 600px) {
+      #topbar { padding: 10px 14px; flex-wrap: wrap; }
+      #app { padding: 12px 12px 40px; }
+
+      .table-header { display: none; }
+
+      .job-row {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        padding: 14px;
+        border-radius: var(--radius);
+        margin: 6px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+      }
+
+      .skeleton-row { display: none; }
+
+      input[type="text"] { width: 100%; }
+      .control-row { flex-direction: column; align-items: stretch; }
+      .field { width: 100%; }
+
+      #job-counter { font-size: 11px; }
+      #topbar .brand h1 { font-size: 14px; }
+
+      .job-title-link { -webkit-line-clamp: unset; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Topbar ──────────────────────────────────────────────────────── -->
+<header id="topbar">
+  <div class="brand">
+    <div class="logo"></div>
+    <h1>Remote Job <span>Radar</span></h1>
+  </div>
+
+  <div id="job-counter" class="mono">
+    TOTAL <strong id="total-count">—</strong> JOBS
+  </div>
+
+  <div class="right">
+    <button id="btn-scan" onclick="triggerScan()">
+      <span id="scan-btn-icon">◎</span> SCAN
+    </button>
+  </div>
+</header>
+
+<main id="app">
+
+  <!-- ── Scrape controls ───────────────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-label">⟩ Scan Parameters</div>
+    <div class="control-row">
+
+
+
+      <div class="field">
+        <label>Work Mode</label>
+        <div class="toggle-group" id="toggle-work-mode" role="group" aria-label="Work Mode">
+          <button id="wm-remote"  class="active"  onclick="setWorkMode('remote')">Remote</button>
+          <button id="wm-onsite"                  onclick="setWorkMode('onsite')">On-site</button>
+          <button id="wm-both"                    onclick="setWorkMode('both')">Both</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Country</label>
+        <div class="toggle-group" id="toggle-country" role="group" aria-label="Country">
+          <button id="ct-US"  onclick="setCountry('US')">US</button>
+          <button id="ct-CA"  onclick="setCountry('CA')">CA</button>
+          <button id="ct-PK"  onclick="setCountry('PK')">PK</button>
+          <button id="ct-all" class="active" onclick="setCountry('all')">All</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="input-location">Location (optional)</label>
+        <input type="text" id="input-location" placeholder="e.g. Austin, TX" />
+      </div>
+
+    </div>
+
+    <div id="scan-status"></div>
+  </div>
+
+
+
+  <!-- ── Stats ─────────────────────────────────────────────────────── -->
+  <div id="stats-bar"></div>
+
+  <!-- ── Table ─────────────────────────────────────────────────────── -->
+  <div id="table-section">
+    <div id="table-header-wrap">
+      <div class="scan-line" id="scan-line"></div>
+      <div class="table-header">
+        <div class="th">Source</div>
+        <div class="th">Job Title</div>
+        <div class="th">Company</div>
+        <div class="th">Location</div>
+        <div class="th">Country</div>
+        <div class="th">Posted</div>
+        <div class="th">Mode</div>
+      </div>
+    </div>
+
+    <div id="job-list">
+      <!-- Jobs rendered here -->
+    </div>
+
+    <div id="load-more-wrap">
+      <button id="btn-load-more" onclick="loadMore()">Load more ↓</button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+/* ─── State ──────────────────────────────────────────────────────────── */
+let workMode  = 'remote';
+let country   = 'all';
+let allJobs   = [];
+let displayed = 0;
+const PAGE    = 50;
+let isScanning = false;
+
+/* ─── Location placeholder logic ────────────────────────────────────── */
+const locationPlaceholders = {
+  US:  'e.g. Austin, TX',
+  CA:  'e.g. Toronto, ON',
+  PK:  'Lahore, Pakistan',
+  all: 'e.g. Austin, TX',
+};
+
+function setWorkMode(mode) {
+  workMode = mode;
+  ['remote', 'onsite', 'both'].forEach(m => {
+    document.getElementById('wm-' + m).className = (m === mode) ? 'active' : '';
+  });
+  loadJobs();   // live-filter the table immediately
+}
+
+function setCountry(c) {
+  country = c;
+  ['US', 'CA', 'PK', 'all'].forEach(cc => {
+    const btn = document.getElementById('ct-' + cc);
+    btn.className = (cc === c) ? (c === 'CA' ? 'active-teal' : 'active') : '';
+  });
+  // Update location placeholder
+  const locInput = document.getElementById('input-location');
+  if (c === 'PK' && !locInput.value) {
+    locInput.placeholder = 'Lahore, Pakistan (default)';
+  } else {
+    locInput.placeholder = locationPlaceholders[c] || 'e.g. city, region';
+  }
+  loadJobs();   // live-filter the table immediately
+}
+
+/* ─── Scan ───────────────────────────────────────────────────────────── */
+async function triggerScan() {
+  if (isScanning) return;
+  isScanning = true;
+
+  const btn  = document.getElementById('btn-scan');
+  const icon = document.getElementById('scan-btn-icon');
+  const status = document.getElementById('scan-status');
+  const tableWrap = document.getElementById('table-header-wrap');
+
+  btn.disabled = true;
+  icon.innerHTML = '<span class="spin-icon">◌</span>';
+  tableWrap.classList.add('scanning');
+  status.className = '';
+  status.innerHTML = '<span class="spin-icon">◌</span> Scanning sources — this may take 20–60 seconds…';
+
+  const body = {
+    work_mode: workMode,
+    country:   country,
+    location:  document.getElementById('input-location').value.trim() || null,
+  };
+
+  try {
+    const res  = await fetch('/api/scrape', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.detail || 'Scrape failed');
+
+    status.className = 'success';
+    status.innerHTML = `✓ Scraped ${data.scraped} listings — ${data.new} new jobs added.`;
+
+    // Refresh the table
+    await loadJobs();
+    await loadStats();
+
+  } catch (err) {
+    status.className = 'error';
+    status.innerHTML = `✗ Error: ${err.message}`;
+  } finally {
+    btn.disabled = false;
+    icon.textContent = '◎';
+    tableWrap.classList.remove('scanning');
+    isScanning = false;
+  }
+}
+
+/* ─── Build filter query string from current UI state ────────────────── */
+function buildJobParams() {
+  const params = new URLSearchParams();
+  params.set('limit', '500');
+
+  // Country filter
+  if (country && country !== 'all') params.set('country', country);
+
+  // Work mode → remote boolean
+  if (workMode === 'remote')  params.set('remote', 'true');
+  if (workMode === 'onsite')  params.set('remote', 'false');
+  // 'both' → no remote param
+
+  // Optional location text filter
+  const loc = document.getElementById('input-location').value.trim();
+  if (loc) params.set('location', loc);
+
+  return params;
+}
+
+/* ─── Active filter badge ─────────────────────────────────────────────── */
+function showActiveFilters() {
+  const status = document.getElementById('scan-status');
+  if (status.className === 'success' || status.className === 'error') return; // don't overwrite scan result
+  const parts = [];
+  if (country !== 'all') parts.push(`Country: ${country}`);
+  if (workMode !== 'both') parts.push(`Mode: ${workMode}`);
+  const loc = document.getElementById('input-location').value.trim();
+  if (loc) parts.push(`Location: "${loc}"`);
+  if (parts.length) {
+    status.className = '';
+    status.innerHTML = `⟩ Filtering by — ${parts.join('  ·  ')}`;
+  } else {
+    status.innerHTML = '';
+  }
+}
+
+/* ─── Load jobs ──────────────────────────────────────────────────────── */
+async function loadJobs() {
+  showSkeletons();
+  showActiveFilters();
+  try {
+    const res  = await fetch('/api/jobs?' + buildJobParams().toString());
+    const data = await res.json();
+    allJobs   = data.jobs || [];
+    displayed = 0;
+    renderJobs(true);
+    updateCounter(data.count);
+  } catch (err) {
+    showError('Failed to load jobs: ' + err.message);
+  }
+}
+
+/* ─── Render ──────────────────────────────────────────────────────────── */
+function renderJobs(fresh = false) {
+  const list = document.getElementById('job-list');
+  if (fresh) list.innerHTML = '';
+
+  if (allJobs.length === 0) {
+    list.innerHTML = '';
+    showEmptyState();
+    document.getElementById('load-more-wrap').style.display = 'none';
+    return;
+  }
+
+  const slice = allJobs.slice(displayed, displayed + PAGE);
+  displayed += slice.length;
+
+  slice.forEach(job => {
+    const row = document.createElement('div');
+    row.className = 'job-row';
+    row.innerHTML = `
+      <div class="cell">
+        <span class="source-tag src-${sanitize(job.source)}">${sanitize(job.source)}</span>
+      </div>
+      <div class="cell">
+        <a class="job-title-link" href="${sanitize(job.url)}" target="_blank" rel="noopener noreferrer">
+          ${sanitize(job.title)}
+        </a>
+      </div>
+      <div class="cell cell-company">${sanitize(job.company)}</div>
+      <div class="cell cell-location">${sanitize(job.location)}</div>
+      <div class="cell">
+        <span class="country-badge badge-${sanitize(job.country)}">${sanitize(job.country) || '—'}</span>
+      </div>
+      <div class="cell cell-date">${formatDate(job.posted_date)}</div>
+      <div class="cell">
+        <span class="remote-badge ${job.remote ? 'remote-yes' : 'remote-no'}">
+          ${job.remote ? 'Remote' : 'On-site'}
+        </span>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+
+  const lmw = document.getElementById('load-more-wrap');
+  lmw.style.display = displayed < allJobs.length ? 'block' : 'none';
+}
+
+function loadMore() { renderJobs(false); }
+
+function showEmptyState() {
+  document.getElementById('job-list').innerHTML = `
+    <div id="empty-state">
+      <div class="radar-icon">📡</div>
+      <h2>No signals detected</h2>
+      <p>No jobs match your current filters. Run a scan to pull fresh listings from all sources.</p>
+      <div class="cta-hint">
+        <span class="arrow">←</span> Hit SCAN to start the radar
+      </div>
+    </div>
+  `;
+}
+
+function showSkeletons() {
+  const list = document.getElementById('job-list');
+  list.innerHTML = '';
+  for (let i = 0; i < 8; i++) {
+    list.innerHTML += `
+      <div class="skeleton-row">
+        <div class="skeleton-cell" style="width:80%;height:14px"></div>
+        <div class="skeleton-cell" style="width:90%;height:14px"></div>
+        <div class="skeleton-cell" style="width:70%;height:14px"></div>
+        <div class="skeleton-cell" style="width:75%;height:14px"></div>
+        <div class="skeleton-cell" style="width:40%;height:14px"></div>
+        <div class="skeleton-cell" style="width:60%;height:14px"></div>
+        <div class="skeleton-cell" style="width:55%;height:14px"></div>
+      </div>
+    `;
+  }
+}
+
+function showError(msg) {
+  document.getElementById('job-list').innerHTML = `
+    <div style="padding:40px;text-align:center;color:var(--red);font-family:var(--mono);font-size:13px;">
+      ✗ ${sanitize(msg)}
+    </div>
+  `;
+}
+
+/* ─── Stats ──────────────────────────────────────────────────────────── */
+async function loadStats() {
+  try {
+    const res  = await fetch('/api/stats');
+    const data = await res.json();
+    const bar  = document.getElementById('stats-bar');
+    const byC  = (data.by_country || []).map(r => `${r.country || '?'} <span>${r.n}</span>`).join(' · ');
+    const byS  = (data.by_source  || []).map(r => `${r.source} <span>${r.n}</span>`).join(' · ');
+    bar.innerHTML = `
+      <div class="stat-chip">Total <span>${data.total || 0}</span></div>
+      ${byC ? `<div class="stat-chip">${byC}</div>` : ''}
+      ${byS ? `<div class="stat-chip">${byS}</div>` : ''}
+    `;
+    updateCounter(data.total);
+  } catch (_) {}
+}
+
+function updateCounter(n) {
+  document.getElementById('total-count').textContent = n ?? '—';
+}
+
+
+
+/* ─── Helpers ────────────────────────────────────────────────────────── */
+function sanitize(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function formatDate(raw) {
+  if (!raw) return '—';
+  try {
+    const d = new Date(raw);
+    if (isNaN(d)) return raw.slice(0, 10);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+  } catch (_) {
+    return raw.slice(0, 10);
+  }
+}
+
+/* ─── Init ───────────────────────────────────────────────────────────── */
+(async function init() {
+  // Set initial country state without triggering loadJobs (we call it below)
+  country = 'all';
+  ['US', 'CA', 'PK', 'all'].forEach(cc => {
+    const btn = document.getElementById('ct-' + cc);
+    btn.className = (cc === 'all') ? 'active' : '';
+  });
+
+  // Debounced location input — re-filters table 500 ms after user stops typing
+  let locationTimer = null;
+  document.getElementById('input-location').addEventListener('input', () => {
+    clearTimeout(locationTimer);
+    locationTimer = setTimeout(() => loadJobs(), 500);
+  });
+
+  await Promise.all([loadJobs(), loadStats()]);
+})();
+</script>
+</body>
+</html>
