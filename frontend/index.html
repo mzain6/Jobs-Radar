@@ -732,7 +732,7 @@ async function triggerScan() {
   icon.innerHTML = '<span class="spin-icon">◌</span>';
   tableWrap.classList.add('scanning');
   status.className = '';
-  status.innerHTML = '<span class="spin-icon">◌</span> Starting background scan...';
+  status.innerHTML = '<span class="spin-icon">◌</span> Scan triggered! Scraping is running in the background...';
 
   const body = {
     work_mode: workMode,
@@ -748,31 +748,27 @@ async function triggerScan() {
     });
     const data = await res.json();
 
-    if (!res.ok) throw new Error(data.detail || 'Scrape failed');
+    if (!res.ok) throw new Error(data.detail || 'Scan request failed');
 
-    status.className = '';
-    status.innerHTML = `📡 Radar scanning — fetching fresh listings in background...`;
+    status.className = 'success';
+    status.innerHTML = `✓ Scan started in background. Refreshing listings...`;
 
-    // Poll for new jobs every 5 seconds for the next 75 seconds
-    let secondsLeft = 75;
+    // Poll for updates every 5 seconds for the next 90 seconds
+    let pollCount = 0;
     const pollInterval = setInterval(async () => {
-      secondsLeft -= 5;
       await loadJobs();
       await loadStats();
-      if (secondsLeft <= 0) {
+      pollCount++;
+      if (pollCount >= 18) { // 90 seconds max
         clearInterval(pollInterval);
-        btn.disabled = false;
-        icon.textContent = '◎';
-        tableWrap.classList.remove('scanning');
-        status.className = 'success';
-        status.innerHTML = `✓ Scan cycle completed. View new listings below.`;
-        isScanning = false;
+        status.innerHTML = `✓ Scan check complete.`;
       }
     }, 5000);
 
   } catch (err) {
     status.className = 'error';
     status.innerHTML = `✗ Error: ${err.message}`;
+  } finally {
     btn.disabled = false;
     icon.textContent = '◎';
     tableWrap.classList.remove('scanning');
