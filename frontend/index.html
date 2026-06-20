@@ -758,13 +758,14 @@ async function triggerScan() {
       try {
         const statusRes = await fetch('/api/scrape/status');
         const statusData = await statusRes.json();
-        
-        // Fetch whatever jobs have been scraped incrementally
-        await loadJobs();
-        await loadStats();
 
         if (!statusData.is_scraping) {
           clearInterval(pollInterval);
+          
+          // Fetch all newly scraped jobs combined once at the end
+          await loadJobs();
+          await loadStats();
+          
           status.className = 'success';
           status.innerHTML = `✓ Scan complete! Fresh jobs loaded.`;
           
