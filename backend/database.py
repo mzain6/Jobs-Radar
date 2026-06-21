@@ -258,18 +258,28 @@ def get_sources() -> list[str]:
 
 
 def get_stats() -> dict:
+    cutoff_date = (date.today() - timedelta(days=7)).strftime("%Y-%m-%d")
     with db() as conn:
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        
-        cursor.execute("SELECT COUNT(*) AS n FROM jobs")
+
+        cursor.execute(
+            "SELECT COUNT(*) AS n FROM jobs WHERE (posted_date >= %s OR posted_date IS NULL OR posted_date = '')",
+            (cutoff_date,)
+        )
         total = cursor.fetchone()["n"]
-        
-        cursor.execute("SELECT country, COUNT(*) AS n FROM jobs GROUP BY country ORDER BY n DESC")
+
+        cursor.execute(
+            "SELECT country, COUNT(*) AS n FROM jobs WHERE (posted_date >= %s OR posted_date IS NULL OR posted_date = '') GROUP BY country ORDER BY n DESC",
+            (cutoff_date,)
+        )
         by_country = cursor.fetchall()
-        
-        cursor.execute("SELECT source, COUNT(*) AS n FROM jobs GROUP BY source ORDER BY n DESC")
+
+        cursor.execute(
+            "SELECT source, COUNT(*) AS n FROM jobs WHERE (posted_date >= %s OR posted_date IS NULL OR posted_date = '') GROUP BY source ORDER BY n DESC",
+            (cutoff_date,)
+        )
         by_source = cursor.fetchall()
-            
+
     return {
         "total": total,
         "by_country": [dict(r) for r in by_country],

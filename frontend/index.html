@@ -751,9 +751,12 @@ async function triggerScan() {
     if (!res.ok) throw new Error(data.detail || 'Scan request failed');
 
     status.className = '';
-    status.innerHTML = `<span class="spin-icon">◌</span> Scanning sources — this may take 30–60 seconds…`;
+    status.innerHTML = `<span class="spin-icon">◌</span> Scanning sources — this may take 20–40 seconds…`;
 
-    // Poll the backend status every 3 seconds to check if it's still scraping
+    // Wait 6 seconds before first poll to ensure the background task has had time to start
+    await new Promise(resolve => setTimeout(resolve, 6000));
+
+    // Poll the backend status every 4 seconds to check if it's still scraping
     const pollInterval = setInterval(async () => {
       try {
         const statusRes = await fetch('/api/scrape/status');
@@ -761,14 +764,14 @@ async function triggerScan() {
 
         if (!statusData.is_scraping) {
           clearInterval(pollInterval);
-          
+
           // Fetch all newly scraped jobs combined once at the end
           await loadJobs();
           await loadStats();
-          
+
           status.className = 'success';
           status.innerHTML = `✓ Scan complete! Fresh jobs loaded.`;
-          
+
           btn.disabled = false;
           icon.textContent = '◎';
           tableWrap.classList.remove('scanning');
@@ -777,7 +780,7 @@ async function triggerScan() {
       } catch (pollErr) {
         console.error('Polling error:', pollErr);
       }
-    }, 3000);
+    }, 4000);
 
   } catch (err) {
     status.className = 'error';
