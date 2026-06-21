@@ -82,7 +82,7 @@ def scrape(
     work_mode: str = "remote",
     country: str = "all",
     location: Optional[str] = None,
-    results_wanted: int = 1000,
+    results_wanted: int = 30,
     hours_old: int = 72,
 ) -> list[dict]:
     """
@@ -91,7 +91,6 @@ def scrape(
     Runs parallel requests per (title, country) combination using ThreadPoolExecutor
     to avoid large OR queries blocking search engines.
     """
-    is_remote = (work_mode == "remote")
 
     # Determine which countries to loop over
     if country == "all":
@@ -134,13 +133,15 @@ def scrape(
             }
             if loc:
                 kwargs["location"] = loc
-            if is_remote:
+            if work_mode == "remote":
                 kwargs["is_remote"] = True
+            elif work_mode == "onsite":
+                kwargs["is_remote"] = False
 
             # Step 1: Log full parameters
             print(f"[JobSpy] Calling JobSpy: search_term='{title}', location='{loc}', "
                   f"country_indeed='{country_indeed}', hours_old={hours_old}, "
-                  f"results_wanted={results_wanted}, remote={is_remote}")
+                  f"results_wanted={results_wanted}, work_mode={work_mode}")
 
             df = scrape_jobs(**kwargs)
             jobs = _df_to_jobs(df, cc)
@@ -148,7 +149,7 @@ def scrape(
             # Step 5: Explicitly log 0 results vs blocks
             if not jobs:
                 print(f"[JobSpy] ZERO RESULTS returned for '{title}' in {cc}. "
-                      f"Params: location='{loc}', hours_old={hours_old}, remote={is_remote}. "
+                      f"Params: location='{loc}', hours_old={hours_old}, work_mode={work_mode}. "
                       f"This was a clean empty result, not an exception block.")
             else:
                 print(f"[JobSpy] SUCCESS: Scraped '{title}' in {cc}: found {len(jobs)} total raw jobs")
@@ -161,7 +162,7 @@ def scrape(
         except Exception as exc:
             # Step 5: Explicitly catch and log exceptions as potential blocks
             print(f"[JobSpy] BLOCKED OR ERROR scraping '{title}' in {cc}. "
-                  f"Params: location='{loc}', hours_old={hours_old}, remote={is_remote}. "
+                  f"Params: location='{loc}', hours_old={hours_old}, work_mode={work_mode}. "
                   f"Exception details: {exc}")
             return []
 

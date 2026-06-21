@@ -69,6 +69,16 @@ def run_scrape(req: ScrapeRequest, job_name: str = "manual") -> tuple[int, int]:
     country   = req.country
     location  = req.location.strip() if req.location else None
 
+    # Resolve location for logging (jobspy resolves it per country if 'all')
+    resolved_loc = location
+    if not resolved_loc:
+        if country == "US": resolved_loc = "United States"
+        elif country == "CA": resolved_loc = "Canada"
+        elif country == "PK": resolved_loc = "Lahore, Pakistan"
+        else: resolved_loc = "Default per country"
+
+    print(f"[Scrape] country={country} location={resolved_loc} work_mode={work_mode}")
+
     total_scraped = 0
     total_new = 0
 

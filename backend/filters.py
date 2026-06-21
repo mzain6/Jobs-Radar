@@ -145,9 +145,9 @@ def normalize_country(raw: str) -> str:
 
 
 COUNTRY_DEFAULTS: dict[str, str] = {
-    "US": "",          # whole US — jobspy handles it
-    "CA": "",          # whole Canada
-    "PK": "Lahore, Pakistan",  # Default to Lahore
+    "US": "United States",
+    "CA": "Canada",
+    "PK": "Lahore, Pakistan",
 }
 
 COUNTRY_INDEED: dict[str, str] = {
