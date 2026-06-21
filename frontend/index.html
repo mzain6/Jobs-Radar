@@ -993,16 +993,33 @@ function formatDate(raw) {
 
   await Promise.all([loadJobs(), loadStats()]);
 
-  // ── Auto-refresh every 4 hours to stay in sync with the cron job ──────
-  // The cron job scrapes new jobs every 4 hours. This silently reloads
-  // the job list and stats so you always see the latest results without
-  // needing to manually refresh the page.
-  const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
+  // ── Smart auto-refresh: poll every 5 minutes for new jobs ─────────────
+  // Every 5 minutes we silently check /api/stats. If the total job count
+  // in the database has grown (meaning the cron job just ran), we
+  // automatically reload the jobs table so the user always sees fresh data.
+  let lastKnownTotal = allJobs.length;
+
   setInterval(async () => {
-    if (!isScanning) {   // don't interrupt an active manual scan
-      await Promise.all([loadJobs(), loadStats()]);
-    }
-  }, FOUR_HOURS_MS);
+    if (isScanning) return;   // don't interrupt an active manual scan
+    try {
+      const res  = await fetch('/api/stats');
+      const data = await res.json();
+      const newTotal = data.total || 0;
+      if (newTotal > lastKnownTotal) {
+        // New jobs have been added — silently reload
+        const diff = newTotal - lastKnownTotal;
+        lastKnownTotal = newTotal;
+        await Promise.all([loadJobs(), loadStats()]);
+        // Show a brief notification at the top
+        const status = document.getElementById('scan-status');
+        if (status.className !== 'error') {
+          status.className = 'success';
+          status.innerHTML = `✓ ${diff} new job(s) added by scheduled scan. Dashboard updated.`;
+          setTimeout(() => { if (status.className === 'success') status.innerHTML = ''; }, 6000);
+        }
+      }
+    } catch (_) {}
+  }, 5 * 60 * 1000);   // every 5 minutes
 })();
 </script>
 </body>
