@@ -35,15 +35,25 @@ def _df_to_jobs(df: pd.DataFrame, country_code: str) -> list[dict]:
         if not url or not title:
             continue
 
-        # Build location string from city + state
-        city  = str(row.get("city") or "").strip()
-        state = str(row.get("state") or "").strip()
-        location_parts = [p for p in [city, state] if p and p.lower() != "nan"]
-        location = ", ".join(location_parts) if location_parts else "Remote"
+        # Build location string using location column, fallback to city/state
+        location_raw = str(row.get("location") or "").strip()
+        if location_raw and location_raw.lower() != "nan":
+            location = location_raw
+        else:
+            city  = str(row.get("city") or "").strip()
+            state = str(row.get("state") or "").strip()
+            location_parts = [p for p in [city, state] if p and p.lower() != "nan"]
+            location = ", ".join(location_parts) if location_parts else ""
 
-        is_remote = bool(row.get("is_remote")) if "is_remote" in row else (
-            "remote" in location.lower()
-        )
+        is_remote_val = row.get("is_remote")
+        if is_remote_val is not None and not pd.isna(is_remote_val):
+            is_remote = bool(is_remote_val)
+        else:
+            is_remote = "remote" in location.lower() if location else False
+
+        # If location is empty, assign a sensible default based on remote status
+        if not location:
+            location = "Remote" if is_remote else "On-site"
 
         # posted_date
         posted = row.get("date_posted")
