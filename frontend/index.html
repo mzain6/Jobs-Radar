@@ -925,7 +925,7 @@ function setResultWorkMode(mode) {
 function applyResultFilters() {
   filteredJobs = allJobs.filter(job => {
     // Country filter
-    if (job.country !== resultCountry) return false;
+    if (resultCountry !== 'all' && job.country !== resultCountry) return false;
     
     // Work mode filter
     if (resultWorkMode === 'remote' && !job.remote) return false;

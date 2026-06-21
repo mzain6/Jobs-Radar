@@ -186,6 +186,7 @@ async def api_get_stats():
 @app.get("/api/cron/1hr")
 async def api_cron_1hr(background_tasks: BackgroundTasks):
     """Triggered by cron every 1 hour to fetch recent jobs."""
+    print(f"[{datetime.now().isoformat()}] CRON TRIGGERED: 1hr_recent. Queuing background task.")
     req = ScrapeRequest(work_mode="both", country="all")
     background_tasks.add_task(run_scrape, req, "1hr_recent")
     return {"status": "queued", "job": "1hr_recent"}
@@ -194,6 +195,7 @@ async def api_cron_1hr(background_tasks: BackgroundTasks):
 @app.get("/api/cron/4hr")
 async def api_cron_4hr(background_tasks: BackgroundTasks):
     """Triggered by cron every 4 hours for a full sweep."""
+    print(f"[{datetime.now().isoformat()}] CRON TRIGGERED: 4hr_full. Queuing background task.")
     req = ScrapeRequest(work_mode="both", country="all")
     background_tasks.add_task(run_scrape, req, "4hr_full")
     return {"status": "queued", "job": "4hr_full"}
