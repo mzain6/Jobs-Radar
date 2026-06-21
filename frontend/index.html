@@ -753,10 +753,9 @@
       <div class="field">
         <label>Country</label>
         <div class="toggle-group" id="toggle-country" role="group" aria-label="Country">
-          <button id="ct-US"  onclick="setCountry('US')">US</button>
+          <button id="ct-US"  class="active" onclick="setCountry('US')">US</button>
           <button id="ct-CA"  onclick="setCountry('CA')">CA</button>
           <button id="ct-PK"  onclick="setCountry('PK')">PK</button>
-          <button id="ct-all" class="active" onclick="setCountry('all')">All</button>
         </div>
       </div>
 
@@ -775,24 +774,21 @@
 
   <!-- ── Result Filters ────────────────────────────────────────────── -->
   <div class="search-filter-bar">
-    <div class="field quick-search-wrap">
-      <input type="text" id="result-input-search" placeholder="Search title, company, location..." />
-    </div>
+    <div style="flex: 1;"></div> <!-- Spacer -->
 
     <div class="filter-popover-wrap">
       <button id="btn-toggle-filters" onclick="toggleFilterPopover(event)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
         </svg>
-        Filter
+        Filter Results
       </button>
 
       <div id="filter-popover" class="glass-popover">
         <div class="field">
           <label>Country</label>
           <div class="toggle-group" id="result-toggle-country" role="group" aria-label="Result Country">
-            <button id="rf-ct-all" class="active" onclick="setResultCountry('all')">All</button>
-            <button id="rf-ct-US" onclick="setResultCountry('US')">US</button>
+            <button id="rf-ct-US" class="active" onclick="setResultCountry('US')">US</button>
             <button id="rf-ct-CA" onclick="setResultCountry('CA')">CA</button>
             <button id="rf-ct-PK" onclick="setResultCountry('PK')">PK</button>
           </div>
@@ -839,7 +835,7 @@
 <script>
 /* ─── State ──────────────────────────────────────────────────────────── */
 let workMode  = 'remote';
-let country   = 'all';
+let country   = 'US';
 let allJobs   = [];
 let filteredJobs = [];
 let displayed = 0;
@@ -851,7 +847,7 @@ if (seenJobs.length > 5000) seenJobs = seenJobs.slice(-5000);
 let seenSet = new Set(seenJobs);
 
 // Result filters state
-let resultCountry = 'all';
+let resultCountry = 'US';
 let resultWorkMode = 'both';
 let resultSearchText = '';
 
@@ -878,7 +874,6 @@ const locationPlaceholders = {
   US:  'e.g. Austin, TX',
   CA:  'e.g. Toronto, ON',
   PK:  'Lahore, Pakistan',
-  all: 'e.g. Austin, TX',
 };
 
 function setWorkMode(mode) {
@@ -891,7 +886,7 @@ function setWorkMode(mode) {
 
 function setCountry(c) {
   country = c;
-  ['US', 'CA', 'PK', 'all'].forEach(cc => {
+  ['US', 'CA', 'PK'].forEach(cc => {
     const btn = document.getElementById('ct-' + cc);
     btn.className = (cc === c) ? (c === 'CA' ? 'active-teal' : 'active') : '';
   });
@@ -908,11 +903,9 @@ function setCountry(c) {
 /* ─── Result Filtering Logic ─────────────────────────────────────────── */
 function setResultCountry(c) {
   resultCountry = c;
-  ['all', 'US', 'CA', 'PK'].forEach(cc => {
+  ['US', 'CA', 'PK'].forEach(cc => {
     const btn = document.getElementById('rf-ct-' + cc);
-    if (btn) {
-      btn.className = (cc === c) ? (c === 'CA' ? 'active-teal' : 'active') : '';
-    }
+    btn.className = (cc === c) ? (c === 'CA' ? 'active-teal' : 'active') : '';
   });
   applyResultFilters();
 }
@@ -929,27 +922,13 @@ function setResultWorkMode(mode) {
 }
 
 function applyResultFilters() {
-  const query = resultSearchText.toLowerCase().trim();
-  
   filteredJobs = allJobs.filter(job => {
     // Country filter
-    if (resultCountry !== 'all') {
-      if (job.country !== resultCountry) return false;
-    }
+    if (job.country !== resultCountry) return false;
     
     // Work mode filter
     if (resultWorkMode === 'remote' && !job.remote) return false;
     if (resultWorkMode === 'onsite' && job.remote) return false;
-    
-    // Quick search text filter
-    if (query) {
-      const title = (job.title || '').toLowerCase();
-      const company = (job.company || '').toLowerCase();
-      const loc = (job.location || '').toLowerCase();
-      if (!title.includes(query) && !company.includes(query) && !loc.includes(query)) {
-        return false;
-      }
-    }
     
     return true;
   });
