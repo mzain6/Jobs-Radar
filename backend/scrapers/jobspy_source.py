@@ -1,16 +1,17 @@
 """
+
 jobspy_source.py — Indeed + LinkedIn scraper via python-jobspy.
 
 Mapping:
   country US  → country_indeed="USA"
   country CA  → country_indeed="Canada"
   country PK  → country_indeed="Pakistan"
-  country all → loop over US + CA (PK handled separately only if explicit)
+  country all → loop over US + CA + PK
 
 Default locations:
   US → "" (whole US)
   CA → "" (whole Canada)
-  PK → "Lahore, Pakistan"
+  PK → "Pakistan" (whole country)
 """
 
 from typing import Optional
@@ -119,10 +120,12 @@ def scrape(
     results_wanted: int = 40,
 ) -> list[dict]:
     """
-    Scrape Indeed + LinkedIn via python-jobspy using a combined query.
+    Scrape Indeed + LinkedIn via python-jobspy.
+
+    For US/CA: uses a single combined OR query (fast).
+    For PK: loops per title with higher results_wanted (more results from a smaller market).
 
     country values: "US" | "CA" | "PK" | "all"
-    When "all", loops over US and CA (PK is only included when explicitly requested).
     """
     is_remote = (work_mode == "remote")
 
@@ -132,7 +135,7 @@ def scrape(
     else:
         countries = [country.upper()]
 
-    # Combine long titles for a single query to avoid loops and timeouts
+    # Combined OR query for US/CA (fast, single request)
     search_titles = [t for t in JOB_TITLES if len(t) > 2]
     combined_query = " OR ".join([f'"{title}"' for title in search_titles])
 
@@ -141,26 +144,40 @@ def scrape(
 
     for cc in countries:
         # Location: use the explicit param if given, else the per-country default
-        if location:
-            loc = location
+        loc = location if location else COUNTRY_DEFAULTS.get(cc, "")
+
+        if cc == "PK":
+            # PK has fewer listings — loop per title for maximum coverage
+            for title in JOB_TITLES:
+                jobs = _scrape_one_country(
+                    query=title,
+                    country_code=cc,
+                    location_str=loc,
+                    is_remote=is_remote,
+                    results_wanted=20,   # 20 per title × 12 titles = up to 240 raw
+                )
+                print(f"[JobSpy] PK query '{title}': found {len(jobs)} raw jobs")
+                for job in jobs:
+                    if not title_matches_fixed_list(job["title"]):
+                        continue
+                    if job["url"] not in seen_urls:
+                        seen_urls.add(job["url"])
+                        all_jobs.append(job)
         else:
-            loc = COUNTRY_DEFAULTS.get(cc, "")
-
-        jobs = _scrape_one_country(
-            query=combined_query,
-            country_code=cc,
-            location_str=loc,
-            is_remote=is_remote,
-            results_wanted=results_wanted,
-        )
-        print(f"[JobSpy] Scraped combined query for country {cc}: found {len(jobs)} total raw jobs")
-
-        for job in jobs:
-            # Filter locally to ensure strict title matching
-            if not title_matches_fixed_list(job["title"]):
-                continue
-            if job["url"] not in seen_urls:
-                seen_urls.add(job["url"])
-                all_jobs.append(job)
+            # US / CA — single combined OR query (fast)
+            jobs = _scrape_one_country(
+                query=combined_query,
+                country_code=cc,
+                location_str=loc,
+                is_remote=is_remote,
+                results_wanted=results_wanted,
+            )
+            print(f"[JobSpy] Scraped combined query for country {cc}: found {len(jobs)} total raw jobs")
+            for job in jobs:
+                if not title_matches_fixed_list(job["title"]):
+                    continue
+                if job["url"] not in seen_urls:
+                    seen_urls.add(job["url"])
+                    all_jobs.append(job)
 
     return all_jobs
