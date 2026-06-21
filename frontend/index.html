@@ -992,6 +992,17 @@ function formatDate(raw) {
   });
 
   await Promise.all([loadJobs(), loadStats()]);
+
+  // ── Auto-refresh every 4 hours to stay in sync with the cron job ──────
+  // The cron job scrapes new jobs every 4 hours. This silently reloads
+  // the job list and stats so you always see the latest results without
+  // needing to manually refresh the page.
+  const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
+  setInterval(async () => {
+    if (!isScanning) {   // don't interrupt an active manual scan
+      await Promise.all([loadJobs(), loadStats()]);
+    }
+  }, FOUR_HOURS_MS);
 })();
 </script>
 </body>
