@@ -61,6 +61,30 @@ def init_db():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_jobs_source ON jobs(source)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_jobs_country ON jobs(country)")
 
+        # Create lock table (single row via lock_id = 1)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS scrape_lock (
+                lock_id     INT PRIMARY KEY DEFAULT 1,
+                job_name    VARCHAR(100) NOT NULL DEFAULT '',
+                is_running  BOOLEAN NOT NULL DEFAULT FALSE,
+                started_at  TIMESTAMP
+            )
+        """)
+        cursor.execute("INSERT INTO scrape_lock (lock_id, is_running) VALUES (1, FALSE) ON CONFLICT (lock_id) DO NOTHING")
+
+        # Create log table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS scrape_log (
+                id           SERIAL PRIMARY KEY,
+                job_name     VARCHAR(100) NOT NULL,
+                started_at   TIMESTAMP NOT NULL,
+                finished_at  TIMESTAMP,
+                jobs_scraped INTEGER DEFAULT 0,
+                jobs_new     INTEGER DEFAULT 0,
+                status       VARCHAR(50) NOT NULL
+            )
+        """)
+
 
 def normalize_url(url: str) -> str:
     """Normalize job URLs for deduplication."""
@@ -210,6 +234,9 @@ def get_jobs(
     if country:
         clauses.append("UPPER(country) = %(country)s")
         params["country"] = country.upper()
+        if country.upper() == "PK" and not location:
+            clauses.append("location ILIKE %(default_pk_location)s")
+            params["default_pk_location"] = "%lahore%"
     if q:
         clauses.append("(title ILIKE %(q)s OR company ILIKE %(q)s)")
         params["q"] = f"%{q}%"
@@ -285,3 +312,46 @@ def get_stats() -> dict:
         "by_country": [dict(r) for r in by_country],
         "by_source": [dict(r) for r in by_source],
     }
+
+
+def acquire_scrape_lock(job_name: str) -> bool:
+    """Try to acquire global scrape lock. Returns True if acquired, False if locked."""
+    with db() as conn:
+        cursor = conn.cursor()
+        
+        # Check current lock state
+        cursor.execute("SELECT is_running, started_at, job_name FROM scrape_lock WHERE lock_id = 1")
+        row = cursor.fetchone()
+        
+        if row and row[0]:
+            is_running, started_at, current_job = row
+            # If lock is stale (> 30 mins), override it
+            if started_at and datetime.now() - started_at > timedelta(minutes=30):
+                print(f"[Lock] Stale lock detected for {current_job} from {started_at}. Overriding.")
+            else:
+                return False  # Still locked
+        
+        # Acquire lock
+        cursor.execute("""
+            UPDATE scrape_lock
+            SET is_running = TRUE, started_at = %s, job_name = %s
+            WHERE lock_id = 1
+        """, (datetime.now(), job_name))
+        return True
+
+
+def release_scrape_lock():
+    """Release the global scrape lock."""
+    with db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE scrape_lock SET is_running = FALSE WHERE lock_id = 1")
+
+
+def log_scrape_run(job_name: str, started_at: datetime, finished_at: datetime, scraped: int, new: int, status: str):
+    """Log the outcome of a scrape job."""
+    with db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO scrape_log (job_name, started_at, finished_at, jobs_scraped, jobs_new, status)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (job_name, started_at, finished_at, scraped, new, status))

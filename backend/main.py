@@ -11,7 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from backend.database import init_db, upsert_jobs, get_jobs, get_sources, get_stats
+from datetime import datetime
+from backend.database import init_db, upsert_jobs, get_jobs, get_sources, get_stats, acquire_scrape_lock, release_scrape_lock, log_scrape_run
 from backend.scrapers import weworkremotely, greenhouse_lever, jobspy_source
 
 # ─── Lifespan ────────────────────────────────────────────────────────────────
@@ -48,10 +49,18 @@ class ScrapeRequest(BaseModel):
 
 is_scraping = False
 
-def run_scrape(req: ScrapeRequest) -> tuple[int, int]:
+def run_scrape(req: ScrapeRequest, job_name: str = "manual") -> tuple[int, int]:
     """Helper to run scrapers synchronously and return (total_scraped, new_inserted)."""
+    if not acquire_scrape_lock(job_name):
+        print(f"[Scraper] skipped — {job_name} already in progress")
+        log_scrape_run(job_name, datetime.now(), datetime.now(), 0, 0, "skipped_locked")
+        return 0, 0
+
     global is_scraping
     is_scraping = True
+    
+    started_at = datetime.now()
+    hours_old = 2 if job_name == "1hr_recent" else 72
     
     work_mode = req.work_mode
     country   = req.country
@@ -98,6 +107,7 @@ def run_scrape(req: ScrapeRequest) -> tuple[int, int]:
                 work_mode=work_mode,
                 country=country,
                 location=location,
+                hours_old=hours_old,
             )
             scraped, new = upsert_jobs(js_jobs)
             total_scraped += scraped
@@ -107,8 +117,13 @@ def run_scrape(req: ScrapeRequest) -> tuple[int, int]:
             print(f"[JobSpy] Scraper error: {exc}")
 
         print(f"[Scraper] All scrapers completed. Total scraped: {total_scraped}, Total new inserts: {total_new}")
+        log_scrape_run(job_name, started_at, datetime.now(), total_scraped, total_new, "success")
+    except Exception as exc:
+        print(f"[Scraper] Fatal error: {exc}")
+        log_scrape_run(job_name, started_at, datetime.now(), total_scraped, total_new, "error")
     finally:
         is_scraping = False
+        release_scrape_lock()
         
     return total_scraped, total_new
 
@@ -152,6 +167,22 @@ async def api_get_stats():
     return get_stats()
 
 
+@app.get("/api/cron/1hr")
+async def api_cron_1hr(background_tasks: BackgroundTasks):
+    """Triggered by cron every 1 hour to fetch recent jobs."""
+    req = ScrapeRequest(work_mode="both", country="all")
+    background_tasks.add_task(run_scrape, req, "1hr_recent")
+    return {"status": "queued", "job": "1hr_recent"}
+
+
+@app.get("/api/cron/4hr")
+async def api_cron_4hr(background_tasks: BackgroundTasks):
+    """Triggered by cron every 4 hours for a full sweep."""
+    req = ScrapeRequest(work_mode="both", country="all")
+    background_tasks.add_task(run_scrape, req, "4hr_full")
+    return {"status": "queued", "job": "4hr_full"}
+
+
 @app.post("/api/scrape")
 async def api_scrape(
     req: ScrapeRequest,
@@ -159,15 +190,13 @@ async def api_scrape(
     async_scrape: bool = Query(False, alias="async")
 ):
     """
-    Run all applicable scrapers for the given parameters and upsert results.
-    If async=true is passed as a query parameter, the task is run in the background
-    to prevent connection timeouts.
+    Run all applicable scrapers for the given parameters.
     """
     if async_scrape:
-        background_tasks.add_task(run_scrape, req)
+        background_tasks.add_task(run_scrape, req, "manual")
         return {"status": "queued", "message": "Scaping task queued in background"}
     else:
-        scraped, new = run_scrape(req)
+        scraped, new = run_scrape(req, "manual")
         return {"scraped": scraped, "new": new}
 
 
@@ -180,12 +209,12 @@ async def api_scrape_get(
     async_scrape: bool = Query(True, alias="async")
 ):
     """
-    HTTP GET wrapper to trigger a scrape. Defaults to async=True so browser/cron hits return immediately.
+    HTTP GET wrapper to trigger a scrape.
     """
     req = ScrapeRequest(work_mode=work_mode, country=country, location=location)
     if async_scrape:
-        background_tasks.add_task(run_scrape, req)
+        background_tasks.add_task(run_scrape, req, "manual")
         return {"status": "queued", "message": "Scraping task queued in background"}
     else:
-        scraped, new = run_scrape(req)
+        scraped, new = run_scrape(req, "manual")
         return {"scraped": scraped, "new": new}

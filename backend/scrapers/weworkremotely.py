@@ -105,15 +105,22 @@ def scrape(
 
     all_jobs: list[dict] = []
 
-    for category, feed_url in WWR_FEEDS:
+    from concurrent.futures import ThreadPoolExecutor
+
+    def fetch_and_parse(feed_info: tuple[str, str]) -> list[dict]:
+        category, feed_url = feed_info
         try:
             resp = requests.get(feed_url, headers=HEADERS, timeout=15)
             resp.raise_for_status()
+            return _parse_feed(category, resp.text)
         except requests.RequestException as exc:
             print(f"[WWR] Failed to fetch {feed_url}: {exc}")
-            continue
+            return []
 
-        jobs = _parse_feed(category, resp.text)
+    with ThreadPoolExecutor(max_workers=len(WWR_FEEDS)) as executor:
+        results = executor.map(fetch_and_parse, WWR_FEEDS)
+
+    for jobs in results:
         all_jobs.extend(jobs)
 
     # Deduplicate by URL within this batch

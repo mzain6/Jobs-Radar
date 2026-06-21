@@ -92,7 +92,10 @@ def scrape_greenhouse(
     location: Optional[str],
 ) -> list[dict]:
     results = []
-    for token in GREENHOUSE_TOKENS:
+    from concurrent.futures import ThreadPoolExecutor
+
+    def process_token(token: str) -> list[dict]:
+        token_results = []
         raw = _fetch_greenhouse(token)
         for job in raw:
             if not title_matches_fixed_list(job["title"]):
@@ -103,7 +106,14 @@ def scrape_greenhouse(
                 continue
             # Infer country from location string
             job["country"] = _infer_country(job["location"])
-            results.append(job)
+            token_results.append(job)
+        return token_results
+
+    with ThreadPoolExecutor(max_workers=len(GREENHOUSE_TOKENS)) as executor:
+        token_lists = executor.map(process_token, GREENHOUSE_TOKENS)
+
+    for sublist in token_lists:
+        results.extend(sublist)
     return results
 
 
@@ -166,7 +176,10 @@ def scrape_lever(
     location: Optional[str],
 ) -> list[dict]:
     results = []
-    for slug in LEVER_SLUGS:
+    from concurrent.futures import ThreadPoolExecutor
+
+    def process_slug(slug: str) -> list[dict]:
+        slug_results = []
         raw = _fetch_lever(slug)
         for job in raw:
             if not title_matches_fixed_list(job["title"]):
@@ -176,7 +189,14 @@ def scrape_lever(
             if location and not location_match(job["location"], location):
                 continue
             job["country"] = _infer_country(job["location"])
-            results.append(job)
+            slug_results.append(job)
+        return slug_results
+
+    with ThreadPoolExecutor(max_workers=len(LEVER_SLUGS)) as executor:
+        slug_lists = executor.map(process_slug, LEVER_SLUGS)
+
+    for sublist in slug_lists:
+        results.extend(sublist)
     return results
 
 
