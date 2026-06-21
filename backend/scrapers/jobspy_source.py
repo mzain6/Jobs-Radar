@@ -83,7 +83,7 @@ def scrape(
     country: str = "all",
     location: Optional[str] = None,
     results_wanted: int = 30,
-    hours_old: int = 72,
+    hours_old: int = 168,
 ) -> list[dict]:
     """
     Scrape Indeed + LinkedIn via python-jobspy.

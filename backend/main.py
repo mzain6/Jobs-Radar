@@ -63,7 +63,7 @@ def run_scrape(req: ScrapeRequest, job_name: str = "manual") -> tuple[int, int]:
     is_scraping = True
     
     started_at = datetime.now()
-    hours_old = 2 if job_name == "1hr_recent" else 72
+    hours_old = 2 if job_name == "1hr_recent" else 168
     
     work_mode = req.work_mode
     country   = req.country
