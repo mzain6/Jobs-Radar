@@ -881,6 +881,7 @@ function setWorkMode(mode) {
   ['remote', 'onsite', 'both'].forEach(m => {
     document.getElementById('wm-' + m).className = (m === mode) ? 'active' : '';
   });
+  setResultWorkMode(mode); // Auto-sync the result filter view
   showActiveFilters();
 }
 
@@ -897,6 +898,7 @@ function setCountry(c) {
   } else {
     locInput.placeholder = locationPlaceholders[c] || 'e.g. city, region';
   }
+  setResultCountry(c); // Auto-sync the result filter view
   showActiveFilters();
 }
 
