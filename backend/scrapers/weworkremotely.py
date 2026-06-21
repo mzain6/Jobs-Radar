@@ -98,7 +98,9 @@ def scrape(
     Fetch and return job dicts from all WWR RSS feeds.
     Returns empty list when work_mode == 'onsite' or country == 'PK'.
     """
-    if work_mode == "onsite" or country == "PK":
+    # WWR is remote-only — skip for onsite-only requests
+    # Also skip for PK-only requests (WWR is mostly US/global)
+    if work_mode == "onsite" or (country == "PK"):
         return []
 
     all_jobs: list[dict] = []

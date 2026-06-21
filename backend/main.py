@@ -39,7 +39,7 @@ async def serve_index():
 # ─── Models ──────────────────────────────────────────────────────────────────
 
 class ScrapeRequest(BaseModel):
-    work_mode: Literal["remote", "onsite", "both"]    = "remote"
+    work_mode: Literal["remote", "onsite", "both"]    = "both"
     country:   Literal["US", "CA", "PK", "all"]       = "all"
     location:  Optional[str]                           = None
 
@@ -174,7 +174,7 @@ async def api_scrape(
 @app.get("/api/scrape")
 async def api_scrape_get(
     background_tasks: BackgroundTasks,
-    work_mode: str = Query("remote"),
+    work_mode: str = Query("both"),
     country: str = Query("all"),
     location: Optional[str] = Query(None),
     async_scrape: bool = Query(True, alias="async")

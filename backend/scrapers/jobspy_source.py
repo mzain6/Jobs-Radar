@@ -128,7 +128,7 @@ def scrape(
 
     # Determine which countries to loop over
     if country == "all":
-        countries = ["US", "CA"]
+        countries = ["US", "CA", "PK"]
     else:
         countries = [country.upper()]
 
