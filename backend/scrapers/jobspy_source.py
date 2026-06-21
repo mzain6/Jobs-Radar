@@ -150,6 +150,11 @@ def scrape(
         for job in job_batch:
             if not title_matches_fixed_list(job["title"]):
                 continue
+            
+            # Strictly filter PK jobs to only include Lahore
+            if job["country"] == "PK" and "lahore" not in job["location"].lower():
+                continue
+
             if job["url"] not in seen_urls:
                 seen_urls.add(job["url"])
                 all_jobs.append(job)

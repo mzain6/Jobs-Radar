@@ -210,7 +210,15 @@ def scrape(
     """Return combined Greenhouse + Lever jobs matching the given parameters."""
     gh = scrape_greenhouse(work_mode, location)
     lv = scrape_lever(work_mode, location)
-    return gh + lv
+    
+    combined = gh + lv
+    filtered = []
+    for job in combined:
+        if job["country"] == "PK" and "lahore" not in job["location"].lower():
+            continue
+        filtered.append(job)
+        
+    return filtered
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
