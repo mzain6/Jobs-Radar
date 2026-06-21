@@ -71,34 +71,36 @@ def run_scrape(req: ScrapeRequest, job_name: str = "manual") -> tuple[int, int]:
 
     try:
         # ── We Work Remotely ──────────────────────────────────────────────────────
-        try:
-            print("[WWR] Starting scrape...")
-            wwr_jobs = weworkremotely.scrape(
-                work_mode=work_mode,
-                country=country,
-                location=location,
-            )
-            scraped, new = upsert_jobs(wwr_jobs)
-            total_scraped += scraped
-            total_new += new
-            print(f"[WWR] Finished scrape: fetched {scraped} jobs, {new} new database inserts")
-        except Exception as exc:
-            print(f"[WWR] Scraper error: {exc}")
+        if country != "PK":
+            try:
+                print("[WWR] Starting scrape...")
+                wwr_jobs = weworkremotely.scrape(
+                    work_mode=work_mode,
+                    country=country,
+                    location=location,
+                )
+                scraped, new = upsert_jobs(wwr_jobs)
+                total_scraped += scraped
+                total_new += new
+                print(f"[WWR] Finished scrape: fetched {scraped} jobs, {new} new database inserts")
+            except Exception as exc:
+                print(f"[WWR] Scraper error: {exc}")
 
         # ── Greenhouse + Lever ────────────────────────────────────────────────────
-        try:
-            print("[Greenhouse/Lever] Starting scrape...")
-            gl_jobs = greenhouse_lever.scrape(
-                work_mode=work_mode,
-                country=country,
-                location=location,
-            )
-            scraped, new = upsert_jobs(gl_jobs)
-            total_scraped += scraped
-            total_new += new
-            print(f"[Greenhouse/Lever] Finished scrape: fetched {scraped} jobs, {new} new database inserts")
-        except Exception as exc:
-            print(f"[Greenhouse/Lever] Scraper error: {exc}")
+        if country != "PK":
+            try:
+                print("[Greenhouse/Lever] Starting scrape...")
+                gl_jobs = greenhouse_lever.scrape(
+                    work_mode=work_mode,
+                    country=country,
+                    location=location,
+                )
+                scraped, new = upsert_jobs(gl_jobs)
+                total_scraped += scraped
+                total_new += new
+                print(f"[Greenhouse/Lever] Finished scrape: fetched {scraped} jobs, {new} new database inserts")
+            except Exception as exc:
+                print(f"[Greenhouse/Lever] Scraper error: {exc}")
 
         # ── JobSpy (Indeed + LinkedIn) ────────────────────────────────────────────
         try:
