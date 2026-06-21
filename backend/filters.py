@@ -6,66 +6,18 @@ import re
 from typing import Optional
 
 JOB_TITLES = [
-    # ── AI / ML Core ─────────────────────────────────────────────────────
-    "AI Engineer",
+    "Associate software Engineer",
+    "Python developer",
+    "junior Python developer",
     "Artificial Intelligence Engineer",
     "Machine Learning Engineer",
     "ML Engineer",
-    "Deep Learning Engineer",
-    "NLP Engineer",
-    "Computer Vision Engineer",
-    "LLM Engineer",
-    "Gen AI Engineer",
-    "Generative AI Engineer",
-    "AI Developer",
-    "Applied AI Engineer",
-    "AI Research Engineer",
-    "AI Researcher",
-    "Research Scientist",
-    "Applied Scientist",
-    "Applied Machine Learning",
-
-    # ── Data Science ──────────────────────────────────────────────────────
-    "Data Scientist",
-    "Senior Data Scientist",
-    "Junior Data Scientist",
-    "Staff Data Scientist",
-    "Principal Data Scientist",
-    "Data Science Engineer",
-
-    # ── Data Engineering ──────────────────────────────────────────────────
-    "Data Engineer",
-    "Senior Data Engineer",
-    "Data Platform Engineer",
-    "Analytics Engineer",
-
-    # ── MLOps / AI Ops ───────────────────────────────────────────────────
-    "MLOps Engineer",
-    "AI Infrastructure Engineer",
-    "AI Platform Engineer",
-
-    # ── Software Engineering (Python-focused) ────────────────────────────
-    "Python Developer",
-    "Python Engineer",
-    "Senior Python Developer",
-    "Junior Python Developer",
-    "Associate Software Engineer",
-    "Software Engineer",
-    "Backend Developer",
-    "Backend Engineer",
-    "Full Stack Developer",
-    "Full Stack Engineer",
-    "Django Developer",
-    "FastAPI Developer",
-    "Flask Developer",
-
-    # ── DevOps / Cloud ───────────────────────────────────────────────────
-    "DevOps Engineer",
-    "Cloud Engineer",
-
-    # ── Short keywords (word-boundary matched) ───────────────────────────
-    "AI",
     "ML",
+    "AI",
+    "Django Developer",
+    "Backend Developer",
+    "FastAPI",
+    "Flask"
 ]
 
 
