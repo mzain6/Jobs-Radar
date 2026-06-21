@@ -116,6 +116,12 @@ def scrape(
         loc = location if location else COUNTRY_DEFAULTS.get(cc, "")
         country_indeed = COUNTRY_INDEED.get(cc, "USA")
 
+        # Step 4: Randomized jittered delay to bypass LinkedIn throttling
+        import time
+        import random
+        jitter = random.uniform(2.0, 5.0)
+        time.sleep(jitter)
+
         try:
             from jobspy import scrape_jobs
             kwargs: dict = {
@@ -131,15 +137,32 @@ def scrape(
             if is_remote:
                 kwargs["is_remote"] = True
 
+            # Step 1: Log full parameters
+            print(f"[JobSpy] Calling JobSpy: search_term='{title}', location='{loc}', "
+                  f"country_indeed='{country_indeed}', hours_old={hours_old}, "
+                  f"results_wanted={results_wanted}, remote={is_remote}")
+
             df = scrape_jobs(**kwargs)
             jobs = _df_to_jobs(df, cc)
-            print(f"[JobSpy] Scraped '{title}' in {cc}: found {len(jobs)} total raw jobs")
+            
+            # Step 5: Explicitly log 0 results vs blocks
+            if not jobs:
+                print(f"[JobSpy] ZERO RESULTS returned for '{title}' in {cc}. "
+                      f"Params: location='{loc}', hours_old={hours_old}, remote={is_remote}. "
+                      f"This was a clean empty result, not an exception block.")
+            else:
+                print(f"[JobSpy] SUCCESS: Scraped '{title}' in {cc}: found {len(jobs)} total raw jobs")
+                
             return jobs
+            
         except ImportError:
             print("[JobSpy] python-jobspy not installed — skipping Indeed/LinkedIn.")
             return []
         except Exception as exc:
-            print(f"[JobSpy] Error scraping '{title}' in {cc}: {exc}")
+            # Step 5: Explicitly catch and log exceptions as potential blocks
+            print(f"[JobSpy] BLOCKED OR ERROR scraping '{title}' in {cc}. "
+                  f"Params: location='{loc}', hours_old={hours_old}, remote={is_remote}. "
+                  f"Exception details: {exc}")
             return []
 
     # Execute scraping for all selected combinations in parallel (max 3 workers)
