@@ -788,7 +788,8 @@
         <div class="field">
           <label>Country</label>
           <div class="toggle-group" id="result-toggle-country" role="group" aria-label="Result Country">
-            <button id="rf-ct-US" class="active" onclick="setResultCountry('US')">US</button>
+            <button id="rf-ct-all" class="active" onclick="setResultCountry('all')">All</button>
+            <button id="rf-ct-US" onclick="setResultCountry('US')">US</button>
             <button id="rf-ct-CA" onclick="setResultCountry('CA')">CA</button>
             <button id="rf-ct-PK" onclick="setResultCountry('PK')">PK</button>
           </div>
@@ -847,7 +848,7 @@ if (seenJobs.length > 5000) seenJobs = seenJobs.slice(-5000);
 let seenSet = new Set(seenJobs);
 
 // Result filters state
-let resultCountry = 'US';
+let resultCountry = 'all';
 let resultWorkMode = 'both';
 let resultSearchText = '';
 
@@ -881,7 +882,6 @@ function setWorkMode(mode) {
   ['remote', 'onsite', 'both'].forEach(m => {
     document.getElementById('wm-' + m).className = (m === mode) ? 'active' : '';
   });
-  setResultWorkMode(mode); // Auto-sync the result filter view
   showActiveFilters();
 }
 
@@ -898,16 +898,15 @@ function setCountry(c) {
   } else {
     locInput.placeholder = locationPlaceholders[c] || 'e.g. city, region';
   }
-  setResultCountry(c); // Auto-sync the result filter view
   showActiveFilters();
 }
 
 /* ─── Result Filtering Logic ─────────────────────────────────────────── */
 function setResultCountry(c) {
   resultCountry = c;
-  ['US', 'CA', 'PK'].forEach(cc => {
+  ['all', 'US', 'CA', 'PK'].forEach(cc => {
     const btn = document.getElementById('rf-ct-' + cc);
-    btn.className = (cc === c) ? (c === 'CA' ? 'active-teal' : 'active') : '';
+    if (btn) btn.className = (cc === c) ? (c === 'CA' ? 'active-teal' : 'active') : '';
   });
   loadJobs(true);
 }
@@ -1038,7 +1037,10 @@ async function loadJobs(showSkeleton = false) {
   }
   showActiveFilters();
   try {
-    let url = `/api/jobs?limit=1000&country=${resultCountry}`;
+    let url = `/api/jobs?limit=2000`;
+    if (resultCountry !== 'all' && resultCountry) {
+        url += `&country=${resultCountry}`;
+    }
     if (resultWorkMode !== 'both') {
       url += `&remote=${resultWorkMode === 'remote' ? 'true' : 'false'}`;
     }

@@ -82,7 +82,7 @@ def scrape(
     work_mode: str = "remote",
     country: str = "all",
     location: Optional[str] = None,
-    results_wanted: int = 30,
+    results_wanted: int = 1000,
     hours_old: int = 168,
     is_manual: bool = False,
 ) -> list[dict]:
