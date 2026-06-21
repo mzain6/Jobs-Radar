@@ -866,6 +866,49 @@ async function loadJobs(showSkeleton = false) {
   }
 }
 
+/* ─── Check active scan on load ──────────────────────────────────────── */
+async function checkActiveScan() {
+  try {
+    const res = await fetch('/api/scrape/status');
+    const data = await res.json();
+    if (data.is_scraping) {
+      // Resume scanning state
+      isScanning = true;
+      const btn  = document.getElementById('btn-scan');
+      const icon = document.getElementById('scan-btn-icon');
+      const status = document.getElementById('scan-status');
+      const tableWrap = document.getElementById('table-header-wrap');
+      
+      btn.disabled = true;
+      icon.innerHTML = '<span class="spin-icon">◌</span>';
+      tableWrap.classList.add('scanning');
+      status.className = '';
+      status.innerHTML = '<span class="spin-icon">◌</span> Scan in progress from a previous request...';
+      
+      // Start polling
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusRes = await fetch('/api/scrape/status');
+          const statusData = await statusRes.json();
+          if (!statusData.is_scraping) {
+            clearInterval(pollInterval);
+            await loadJobs(true);
+            await loadStats();
+            status.className = 'success';
+            status.innerHTML = `✓ Scan complete! Fresh jobs loaded.`;
+            btn.disabled = false;
+            icon.textContent = '◎';
+            tableWrap.classList.remove('scanning');
+            isScanning = false;
+          }
+        } catch (e) {}
+      }, 15000);
+    }
+  } catch (err) {
+    console.error('Error checking scan status:', err);
+  }
+}
+
 /* ─── Render ──────────────────────────────────────────────────────────── */
 function renderJobs(fresh = false) {
   const list = document.getElementById('job-list');
@@ -1006,6 +1049,9 @@ function formatDate(raw) {
 
 /* ─── Init ───────────────────────────────────────────────────────────── */
 (async function init() {
+  // Check if a scan is already running from a previous request
+  checkActiveScan();
+
   // Set initial country state without triggering loadJobs (we call it below)
   country = 'all';
   ['US', 'CA', 'PK', 'all'].forEach(cc => {

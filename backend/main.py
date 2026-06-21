@@ -20,6 +20,9 @@ from backend.scrapers import weworkremotely, greenhouse_lever, jobspy_source
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    # If the server crashed while a scrape was running, the lock might be stuck in the DB.
+    # We clear it on startup so the system can run scans again.
+    release_scrape_lock()
     yield
 
 app = FastAPI(title="Remote Job Radar", version="1.0.0", lifespan=lifespan)
