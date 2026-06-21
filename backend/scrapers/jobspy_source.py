@@ -16,7 +16,7 @@ Default locations:
 from typing import Optional
 import pandas as pd
 
-from backend.filters import COUNTRY_DEFAULTS, COUNTRY_INDEED, JOB_TITLES
+from backend.filters import COUNTRY_DEFAULTS, COUNTRY_INDEED, JOB_TITLES, title_matches_fixed_list
 
 SITE_NAMES = ["indeed", "linkedin"]
 
@@ -116,10 +116,10 @@ def scrape(
     work_mode: str = "remote",
     country: str = "all",
     location: Optional[str] = None,
-    results_wanted: int = 10,
+    results_wanted: int = 40,
 ) -> list[dict]:
     """
-    Scrape Indeed + LinkedIn via python-jobspy, looping over the fixed list of job titles.
+    Scrape Indeed + LinkedIn via python-jobspy using a combined query.
 
     country values: "US" | "CA" | "PK" | "all"
     When "all", loops over US and CA (PK is only included when explicitly requested).
@@ -132,6 +132,10 @@ def scrape(
     else:
         countries = [country.upper()]
 
+    # Combine long titles for a single query to avoid loops and timeouts
+    search_titles = [t for t in JOB_TITLES if len(t) > 2]
+    combined_query = " OR ".join([f'"{title}"' for title in search_titles])
+
     all_jobs: list[dict] = []
     seen_urls: set[str] = set()
 
@@ -142,19 +146,21 @@ def scrape(
         else:
             loc = COUNTRY_DEFAULTS.get(cc, "")
 
-        for title in JOB_TITLES:
-            jobs = _scrape_one_country(
-                query=title,
-                country_code=cc,
-                location_str=loc,
-                is_remote=is_remote,
-                results_wanted=results_wanted,
-            )
-            print(f"[JobSpy] Scraped query '{title}' for country {cc}: found {len(jobs)} jobs")
+        jobs = _scrape_one_country(
+            query=combined_query,
+            country_code=cc,
+            location_str=loc,
+            is_remote=is_remote,
+            results_wanted=results_wanted,
+        )
+        print(f"[JobSpy] Scraped combined query for country {cc}: found {len(jobs)} total raw jobs")
 
-            for job in jobs:
-                if job["url"] not in seen_urls:
-                    seen_urls.add(job["url"])
-                    all_jobs.append(job)
+        for job in jobs:
+            # Filter locally to ensure strict title matching
+            if not title_matches_fixed_list(job["title"]):
+                continue
+            if job["url"] not in seen_urls:
+                seen_urls.add(job["url"])
+                all_jobs.append(job)
 
     return all_jobs
