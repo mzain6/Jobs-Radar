@@ -84,6 +84,7 @@ def scrape(
     location: Optional[str] = None,
     results_wanted: int = 30,
     hours_old: int = 168,
+    is_manual: bool = False,
 ) -> list[dict]:
     """
     Scrape Indeed + LinkedIn via python-jobspy.
@@ -118,7 +119,10 @@ def scrape(
         # Step 4: Randomized jittered delay to bypass LinkedIn throttling
         import time
         import random
-        jitter = random.uniform(2.0, 5.0)
+        if is_manual:
+            jitter = random.uniform(0.1, 0.3) # Blast mode for manual speed
+        else:
+            jitter = random.uniform(2.0, 5.0) # Safe mode for background cron
         time.sleep(jitter)
 
         try:
@@ -166,8 +170,9 @@ def scrape(
                   f"Exception details: {exc}")
             return []
 
-    # Execute scraping for all selected combinations in parallel (max 3 workers)
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    # Execute scraping for all selected combinations in parallel
+    workers = 12 if is_manual else 3
+    with ThreadPoolExecutor(max_workers=workers) as executor:
         results = executor.map(scrape_title_country, tasks)
 
     for job_batch in results:

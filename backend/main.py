@@ -123,6 +123,7 @@ def run_scrape(req: ScrapeRequest, job_name: str = "manual") -> tuple[int, int]:
                 country=country,
                 location=location,
                 hours_old=hours_old,
+                is_manual=(job_name == "manual"),
             )
             scraped, new = upsert_jobs(js_jobs)
             total_scraped += scraped
