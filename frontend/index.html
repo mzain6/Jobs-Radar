@@ -7,37 +7,39 @@
   <meta name="description" content="Self-hosted job aggregator scanning We Work Remotely, Greenhouse, Lever, Indeed and LinkedIn for remote and on-site opportunities in the US, Canada, and Pakistan." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
   <style>
     /* ── Design tokens ─────────────────────────────────────────────── */
     :root {
-      --bg:        #0F1419;
-      --surface:   #161D26;
-      --surface2:  #1C2533;
-      --border:    #2A3540;
-      --border2:   #354555;
-      --text:      #E8EDF2;
-      --muted:     #8B98A5;
-      --amber:     #FFB000;
-      --amber-dim: #CC8C00;
-      --teal:      #4FD1C5;
-      --teal-dim:  #2FA89E;
-      --green:     #3DDC97;
-      --red:       #FF5C5C;
+      --void:        #0B1018;
+      --panel:       #131A24;
+      --panel-raised:#1A2330;
+      --hairline:    #232E3D;
+      --ink:         #E7ECF2;
+      --ink-dim:     #7E8CA0;
+      --signal:      #FFB020;
+      --echo:        #35D6C4;
+
       --mono:      'IBM Plex Mono', monospace;
       --sans:      'Inter', sans-serif;
+      --display:   'Space Grotesk', sans-serif;
+
       --radius:    6px;
       --radius-lg: 10px;
       --transition: 0.18s ease;
+
+      --src-linkedin:   #3B628B;
+      --src-indeed:     #354C75;
+      --src-greenhouse: #306B52;
+      --src-lever:      #524175;
+      --src-wwr:        #70593B;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     html { scroll-behavior: smooth; }
-
     body {
-      background: var(--bg);
-      color: var(--text);
+      background: var(--void);
+      color: var(--ink);
       font-family: var(--sans);
       font-size: 14px;
       min-height: 100vh;
@@ -46,25 +48,25 @@
 
     /* ── Scrollbar ─────────────────────────────────────────────────── */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+    ::-webkit-scrollbar-track { background: var(--void); }
+    ::-webkit-scrollbar-thumb { background: var(--hairline); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--ink-dim); }
 
     /* ── Utility ───────────────────────────────────────────────────── */
     .mono { font-family: var(--mono); }
-    .muted { color: var(--muted); }
-    .amber { color: var(--amber); }
-    .teal  { color: var(--teal); }
+    .muted { color: var(--ink-dim); }
+    .signal { color: var(--signal); }
+    .echo  { color: var(--echo); }
 
     /* ── Topbar ────────────────────────────────────────────────────── */
     #topbar {
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(15, 20, 25, 0.92);
+      background: rgba(11, 16, 24, 0.92);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--hairline);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -75,61 +77,67 @@
     #topbar .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 16px;
       flex-shrink: 0;
     }
 
-    #topbar .brand .logo {
-      width: 32px;
-      height: 32px;
-      border: 2px solid var(--amber);
+    .radar-container {
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      border: 1px solid var(--hairline);
       position: relative;
-      animation: pulse-ring 3s ease-in-out infinite;
+      overflow: hidden;
+      background: var(--void);
+      flex-shrink: 0;
     }
-
-    #topbar .brand .logo::after {
-      content: '';
+    
+    .radar-sweep {
       position: absolute;
-      width: 10px;
-      height: 10px;
-      background: var(--amber);
+      top: -50%; left: -50%; right: -50%; bottom: -50%;
       border-radius: 50%;
-      animation: pulse-dot 3s ease-in-out infinite;
+      background: conic-gradient(from 0deg, transparent 70%, var(--signal) 100%);
+      opacity: 0.15;
+      animation: sweep-spin 4s linear infinite;
     }
 
-    @keyframes pulse-ring {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(255,176,0,0.4); }
-      50%       { box-shadow: 0 0 0 8px rgba(255,176,0,0); }
-    }
-    @keyframes pulse-dot {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50%       { transform: scale(0.7); opacity: 0.6; }
+    @keyframes sweep-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
 
     #topbar .brand h1 {
-      font-family: var(--mono);
-      font-size: 16px;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      color: var(--text);
+      font-family: var(--display);
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--ink);
+      line-height: 1;
     }
-    #topbar .brand h1 span { color: var(--amber); }
 
-    #job-counter {
-      font-family: var(--mono);
-      font-size: 13px;
-      color: var(--muted);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 4px 12px;
-      white-space: nowrap;
+    #job-counter-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
-    #job-counter strong { color: var(--amber); }
+    .display-count {
+      font-family: var(--display);
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
+    }
+    .count-label {
+      font-family: var(--sans);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--ink-dim);
+      font-weight: 600;
+      margin-top: 4px;
+    }
 
     #topbar .right { display: flex; align-items: center; gap: 10px; }
 
@@ -138,30 +146,26 @@
       font-size: 13px;
       font-weight: 600;
       letter-spacing: 0.08em;
-      background: var(--amber);
+      background: var(--signal);
       color: #0F1419;
       border: none;
       border-radius: var(--radius);
       padding: 8px 20px;
       cursor: pointer;
-      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+      transition: background var(--transition), transform var(--transition);
       display: flex;
       align-items: center;
       gap: 8px;
     }
     #btn-scan:hover:not(:disabled) {
       background: #ffc233;
-      box-shadow: 0 0 18px rgba(255,176,0,0.35);
       transform: translateY(-1px);
     }
-    #btn-scan:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
-
-    .spin-icon {
-      display: inline-block;
-      animation: spin 0.9s linear infinite;
-      line-height: 1;
+    #btn-scan:focus-visible {
+      outline: 2px solid var(--ink);
+      outline-offset: 2px;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    #btn-scan:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 
     /* ── Main layout ───────────────────────────────────────────────── */
     #app {
@@ -172,19 +176,22 @@
 
     /* ── Panel / card wrapper ──────────────────────────────────────── */
     .panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
+      background: var(--panel);
+      border: 1px solid var(--hairline);
       border-radius: var(--radius-lg);
       padding: 16px 20px;
       margin-bottom: 14px;
     }
 
+    #panel-scan { border-left: 2px solid var(--signal); }
+    #panel-filters { border-left: 2px solid var(--echo); }
+
     .panel-label {
-      font-family: var(--mono);
+      font-family: var(--sans);
       font-size: 10px;
       font-weight: 600;
       letter-spacing: 0.12em;
-      color: var(--muted);
+      color: var(--ink-dim);
       text-transform: uppercase;
       margin-bottom: 12px;
     }
@@ -193,7 +200,7 @@
     .control-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 16px;
       align-items: flex-end;
     }
 
@@ -203,129 +210,100 @@
       gap: 5px;
     }
     .field label {
-      font-family: var(--mono);
+      font-family: var(--sans);
       font-size: 10px;
       font-weight: 600;
       letter-spacing: 0.1em;
-      color: var(--muted);
+      color: var(--ink-dim);
       text-transform: uppercase;
     }
 
     input[type="text"] {
-      background: var(--bg);
-      border: 1px solid var(--border);
+      background: var(--void);
+      border: 1px solid var(--hairline);
       border-radius: var(--radius);
-      color: var(--text);
+      color: var(--ink);
       font-family: var(--sans);
       font-size: 13px;
       padding: 7px 12px;
       outline: none;
-      transition: border-color var(--transition), box-shadow var(--transition);
+      transition: border-color var(--transition);
       width: 220px;
     }
-    input[type="text"]:focus {
-      border-color: var(--amber);
-      box-shadow: 0 0 0 2px rgba(255,176,0,0.15);
+    input[type="text"]:focus-visible {
+      border-color: var(--signal);
     }
-    input[type="text"]::placeholder { color: var(--muted); opacity: 0.7; }
+    input[type="text"]::placeholder { color: var(--ink-dim); opacity: 0.7; }
 
     /* ── Toggle button group ────────────────────────────────────────── */
     .toggle-group {
       display: flex;
-      border: 1px solid var(--border);
+      border: 1px solid var(--hairline);
       border-radius: var(--radius);
       overflow: hidden;
     }
     .toggle-group button {
-      font-family: var(--mono);
+      font-family: var(--sans);
       font-size: 12px;
       font-weight: 500;
-      letter-spacing: 0.05em;
-      background: var(--bg);
-      color: var(--muted);
+      letter-spacing: 0.02em;
+      background: var(--void);
+      color: var(--ink-dim);
       border: none;
-      border-right: 1px solid var(--border);
+      border-right: 1px solid var(--hairline);
       padding: 7px 14px;
       cursor: pointer;
       transition: background var(--transition), color var(--transition);
       white-space: nowrap;
     }
     .toggle-group button:last-child { border-right: none; }
-    .toggle-group button:hover { background: var(--surface2); color: var(--text); }
-    .toggle-group button.active {
-      background: var(--amber);
-      color: #0F1419;
+    .toggle-group button:hover { background: var(--panel-raised); color: var(--ink); }
+    .toggle-group button:focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; z-index: 1; position: relative; }
+    
+    #toggle-work-mode button.active, #toggle-country button.active {
+      background: var(--signal);
+      color: var(--void);
       font-weight: 600;
     }
-    .toggle-group button.active-teal {
-      background: var(--teal);
-      color: #0F1419;
+    
+    #result-toggle-mode button.active, #result-toggle-country button.active {
+      background: var(--echo);
+      color: var(--void);
       font-weight: 600;
     }
-
-
 
     /* ── Scan status ────────────────────────────────────────────────── */
     #scan-status {
       font-family: var(--mono);
       font-size: 12px;
-      color: var(--amber);
+      color: var(--signal);
       min-height: 20px;
       margin-top: 10px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    #scan-status.success { color: var(--green); }
-    #scan-status.error   { color: var(--red); }
+    #scan-status.success { color: var(--echo); }
+    #scan-status.error   { color: #FF5C5C; }
 
     /* ── Table section ──────────────────────────────────────────────── */
     #table-section {
-      background: var(--surface);
-      border: 1px solid var(--border);
+      background: var(--panel);
+      border: 1px solid var(--hairline);
       border-radius: var(--radius-lg);
       overflow: hidden;
     }
 
-    /* ── Scan-line animation ─────────────────────────────────────────── */
-    #table-header-wrap {
-      position: relative;
-      overflow: hidden;
-    }
-
-    .scan-line {
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 60%;
-      height: 100%;
-      background: linear-gradient(
-        90deg,
-        transparent 0%,
-        rgba(255, 176, 0, 0.06) 40%,
-        rgba(255, 176, 0, 0.18) 50%,
-        rgba(255, 176, 0, 0.06) 60%,
-        transparent 100%
-      );
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-
-    .scanning .scan-line {
+    /* ── Scan Active Mode ───────────────────────────────────────────── */
+    .scanning .radar-sweep {
+      animation-duration: 1.5s;
       opacity: 1;
-      animation: sweep 1.6s ease-in-out infinite;
     }
 
+    /* ── Reduced Motion ─────────────────────────────────────────────── */
     @media (prefers-reduced-motion: reduce) {
-      .scanning .scan-line { animation: none; opacity: 0; }
-      .spin-icon { animation: none; }
-      @keyframes pulse-ring { 0%, 100% { box-shadow: none; } }
-    }
-
-    @keyframes sweep {
-      0%   { left: -60%; }
-      100% { left: 110%; }
+      .radar-sweep { animation: none !important; opacity: 1 !important; background: var(--signal) !important; transform: scale(0.4) !important; }
+      .job-row.blip { animation: none !important; background-color: transparent !important; }
     }
 
     /* ── Table header ──────────────────────────────────────────────── */
@@ -334,15 +312,15 @@
       grid-template-columns: 110px 1fr 160px 160px 60px 100px 90px;
       gap: 0;
       padding: 11px 16px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface2);
+      border-bottom: 1px solid var(--hairline);
+      background: var(--panel-raised);
     }
     .th {
-      font-family: var(--mono);
+      font-family: var(--sans);
       font-size: 10px;
       font-weight: 600;
       letter-spacing: 0.12em;
-      color: var(--muted);
+      color: var(--ink-dim);
       text-transform: uppercase;
       user-select: none;
     }
@@ -355,17 +333,32 @@
       grid-template-columns: 110px 1fr 160px 160px 60px 100px 90px;
       gap: 0;
       padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--hairline);
       align-items: center;
       transition: background var(--transition);
-      animation: fadeInRow 0.3s ease both;
+      position: relative;
     }
     .job-row:last-child { border-bottom: none; }
-    .job-row:hover { background: var(--surface2); }
+    .job-row:hover { background: var(--panel-raised); }
 
-    @keyframes fadeInRow {
-      from { opacity: 0; transform: translateY(6px); }
-      to   { opacity: 1; transform: translateY(0); }
+    .job-row::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+    }
+    .job-row.src-linkedin::before { background: var(--src-linkedin); }
+    .job-row.src-indeed::before { background: var(--src-indeed); }
+    .job-row.src-greenhouse::before { background: var(--src-greenhouse); }
+    .job-row.src-lever::before { background: var(--src-lever); }
+    .job-row.src-weworkremotely::before { background: var(--src-wwr); }
+
+    .job-row.blip {
+      animation: radar-blip 1.5s ease-out forwards;
+    }
+    @keyframes radar-blip {
+      0% { background-color: rgba(53, 214, 196, 0.2); }
+      100% { background-color: transparent; }
     }
 
     /* ── Cell styles ────────────────────────────────────────────────── */
@@ -373,24 +366,15 @@
 
     .source-tag {
       display: inline-block;
-      font-family: var(--mono);
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      padding: 2px 8px;
-      border-radius: 3px;
-      text-transform: uppercase;
-      white-space: nowrap;
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink-dim);
+      text-transform: capitalize;
     }
-    .src-weworkremotely  { background: rgba(255,176,0,0.12);  color: var(--amber); border: 1px solid rgba(255,176,0,0.25); }
-    .src-greenhouse      { background: rgba(61,220,151,0.12); color: var(--green); border: 1px solid rgba(61,220,151,0.25); }
-    .src-lever           { background: rgba(79,209,197,0.12); color: var(--teal);  border: 1px solid rgba(79,209,197,0.25); }
-    .src-indeed          { background: rgba(255,92,92,0.12);  color: var(--red);   border: 1px solid rgba(255,92,92,0.25); }
-    .src-linkedin        { background: rgba(100,160,255,0.12);color: #64A0FF;      border: 1px solid rgba(100,160,255,0.25); }
-    .src-jobspy          { background: rgba(139,152,165,0.12);color: var(--muted); border: 1px solid rgba(139,152,165,0.25); }
 
     .job-title-link {
-      color: var(--text);
+      color: var(--ink);
       text-decoration: none;
       font-weight: 500;
       font-size: 13px;
@@ -400,20 +384,20 @@
       overflow: hidden;
       transition: color var(--transition);
     }
-    .job-title-link:hover { color: var(--amber); text-decoration: underline; }
+    .job-title-link:hover { color: var(--echo); text-decoration: underline; }
 
     .cell-company {
       font-size: 13px;
-      color: var(--muted);
+      color: var(--ink-dim);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
     .cell-location {
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--muted);
+      font-family: var(--sans);
+      font-size: 12px;
+      color: var(--ink-dim);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -427,31 +411,36 @@
       letter-spacing: 0.08em;
       padding: 2px 6px;
       border-radius: 3px;
+      background: var(--panel-raised);
+      color: var(--ink-dim);
+      border: 1px solid var(--hairline);
     }
-    .badge-US { background: rgba(100,160,255,0.12); color: #64A0FF; border: 1px solid rgba(100,160,255,0.2); }
-    .badge-CA { background: rgba(79,209,197,0.12);  color: var(--teal);  border: 1px solid rgba(79,209,197,0.2); }
-    .badge-PK { background: rgba(61,220,151,0.12);  color: var(--green); border: 1px solid rgba(61,220,151,0.2); }
-    .badge-   { background: rgba(139,152,165,0.1);  color: var(--muted); border: 1px solid rgba(139,152,165,0.2); }
 
     .cell-date {
       font-family: var(--mono);
       font-size: 11px;
-      color: var(--muted);
+      color: var(--ink-dim);
       white-space: nowrap;
     }
 
     .remote-badge {
       display: inline-block;
-      font-family: var(--mono);
+      font-family: var(--sans);
       font-size: 10px;
       font-weight: 600;
       letter-spacing: 0.06em;
       padding: 2px 8px;
       border-radius: 3px;
       white-space: nowrap;
+      background: rgba(53, 214, 196, 0.1); 
+      color: var(--echo); 
+      border: 1px solid rgba(53, 214, 196, 0.2);
     }
-    .remote-yes { background: rgba(61,220,151,0.12); color: var(--green); border: 1px solid rgba(61,220,151,0.2); }
-    .remote-no  { background: rgba(255,92,92,0.10);  color: var(--red);   border: 1px solid rgba(255,92,92,0.2); }
+    .remote-no {
+      background: rgba(126, 140, 160, 0.1);
+      color: var(--ink-dim);
+      border: 1px solid rgba(126, 140, 160, 0.2);
+    }
 
     /* ── Empty state ─────────────────────────────────────────────────── */
     #empty-state {
@@ -463,58 +452,17 @@
       text-align: center;
       gap: 16px;
     }
-    #empty-state .radar-icon {
-      font-size: 56px;
-      line-height: 1;
-      opacity: 0.4;
-    }
     #empty-state h2 {
-      font-family: var(--mono);
+      font-family: var(--sans);
       font-size: 16px;
-      color: var(--muted);
+      color: var(--ink-dim);
       font-weight: 500;
     }
     #empty-state p {
       font-size: 13px;
-      color: var(--muted);
+      color: var(--ink-dim);
       max-width: 360px;
       opacity: 0.7;
-    }
-    #empty-state .cta-hint {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-family: var(--mono);
-      font-size: 12px;
-      color: var(--amber);
-      margin-top: 8px;
-    }
-    #empty-state .cta-hint .arrow { font-size: 18px; animation: bounce-left 1.4s ease-in-out infinite; }
-    @keyframes bounce-left {
-      0%, 100% { transform: translateX(0); }
-      50%       { transform: translateX(-6px); }
-    }
-
-    /* ── Loading skeleton ───────────────────────────────────────────── */
-    .skeleton-row {
-      display: grid;
-      grid-template-columns: 110px 1fr 160px 160px 60px 100px 90px;
-      gap: 0;
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
-      align-items: center;
-    }
-    .skeleton-cell {
-      height: 14px;
-      background: linear-gradient(90deg, var(--border) 25%, var(--surface2) 50%, var(--border) 75%);
-      background-size: 200% 100%;
-      border-radius: 3px;
-      margin-right: 12px;
-      animation: shimmer 1.5s infinite;
-    }
-    @keyframes shimmer {
-      0%   { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
     }
 
     /* ── Stats bar ───────────────────────────────────────────────────── */
@@ -527,36 +475,36 @@
     .stat-chip {
       font-family: var(--mono);
       font-size: 11px;
-      color: var(--muted);
-      background: var(--surface);
-      border: 1px solid var(--border);
+      color: var(--ink-dim);
+      background: var(--panel);
+      border: 1px solid var(--hairline);
       border-radius: var(--radius);
       padding: 4px 10px;
       white-space: nowrap;
     }
-    .stat-chip span { color: var(--text); font-weight: 600; }
+    .stat-chip span { color: var(--ink); font-weight: 600; }
 
     /* ── Pagination / load more ─────────────────────────────────────── */
     #load-more-wrap {
       padding: 16px;
       text-align: center;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid var(--hairline);
       display: none;
     }
     #btn-load-more {
       font-family: var(--mono);
       font-size: 12px;
       background: transparent;
-      color: var(--muted);
-      border: 1px solid var(--border);
+      color: var(--ink-dim);
+      border: 1px solid var(--hairline);
       border-radius: var(--radius);
       padding: 7px 20px;
       cursor: pointer;
       transition: background var(--transition), color var(--transition), border-color var(--transition);
     }
-    #btn-load-more:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+    #btn-load-more:hover { background: var(--panel-raised); color: var(--ink); border-color: var(--ink-dim); }
 
-    /* ── Responsive — cards under 600 px ──────────────────────────── */
+    /* ── Responsive ─────────────────────────────────────────────────── */
     @media (max-width: 600px) {
       #topbar { padding: 10px 14px; flex-wrap: wrap; }
       #app { padding: 12px 12px 40px; }
@@ -571,18 +519,16 @@
         padding: 14px;
         border-radius: var(--radius);
         margin: 6px;
-        background: var(--surface2);
-        border: 1px solid var(--border);
+        background: var(--panel-raised);
+        border: 1px solid var(--hairline);
       }
-
-      .skeleton-row { display: none; }
+      .job-row::before { left: -1px; border-radius: var(--radius) 0 0 var(--radius); }
 
       input[type="text"] { width: 100%; }
       .control-row { flex-direction: column; align-items: stretch; }
       .field { width: 100%; }
 
-      #job-counter { font-size: 11px; }
-      #topbar .brand h1 { font-size: 14px; }
+      #topbar .brand h1 { font-size: 20px; }
 
       .job-title-link { -webkit-line-clamp: unset; }
     }
@@ -593,12 +539,13 @@
 <!-- ── Topbar ──────────────────────────────────────────────────────── -->
 <header id="topbar">
   <div class="brand">
-    <div class="logo"></div>
-    <h1>Remote Job <span>Radar</span></h1>
+    <div class="radar-container"><div class="radar-sweep"></div></div>
+    <h1>Remote Job <span class="signal">Radar</span></h1>
   </div>
 
-  <div id="job-counter" class="mono">
-    TOTAL <strong id="total-count">—</strong> JOBS
+  <div id="job-counter-wrap">
+    <div id="total-count" class="display-count">—</div>
+    <div class="count-label">TOTAL JOBS</div>
   </div>
 
   <div class="right">
@@ -611,7 +558,7 @@
 <main id="app">
 
   <!-- ── Scrape controls ───────────────────────────────────────────── -->
-  <div class="panel">
+  <div class="panel" id="panel-scan">
     <div class="panel-label">⟩ Scan Parameters</div>
     <div class="control-row">
 
@@ -650,7 +597,7 @@
   <div id="stats-bar"></div>
 
   <!-- ── Result Filters ────────────────────────────────────────────── -->
-  <div class="panel" style="margin-bottom: 14px; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface);">
+  <div class="panel" id="panel-filters" style="margin-bottom: 14px; padding: 12px 16px;">
     <div class="panel-label" style="margin-bottom: 8px;">⟩ Result Filters</div>
     <div class="control-row" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; width: 100%;">
       <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;">
@@ -716,6 +663,10 @@ let filteredJobs = [];
 let displayed = 0;
 const PAGE    = 50;
 let isScanning = false;
+
+let seenJobs = JSON.parse(localStorage.getItem('seenJobs') || '[]');
+if (seenJobs.length > 5000) seenJobs = seenJobs.slice(-5000);
+let seenSet = new Set(seenJobs);
 
 // Result filters state
 let resultCountry = 'all';
@@ -930,12 +881,21 @@ function renderJobs(fresh = false) {
   const slice = filteredJobs.slice(displayed, displayed + PAGE);
   displayed += slice.length;
 
+  let hasNew = false;
   slice.forEach(job => {
+    let isNew = false;
+    if (!seenSet.has(job.url)) {
+      isNew = true;
+      hasNew = true;
+      seenSet.add(job.url);
+      seenJobs.push(job.url);
+    }
+
     const row = document.createElement('div');
-    row.className = 'job-row';
+    row.className = `job-row src-${sanitize(job.source)} ${isNew ? 'blip' : ''}`;
     row.innerHTML = `
       <div class="cell">
-        <span class="source-tag src-${sanitize(job.source)}">${sanitize(job.source)}</span>
+        <span class="source-tag">${sanitize(job.source)}</span>
       </div>
       <div class="cell">
         <a class="job-title-link" href="${sanitize(job.url)}" target="_blank" rel="noopener noreferrer">
@@ -957,6 +917,11 @@ function renderJobs(fresh = false) {
     list.appendChild(row);
   });
 
+  if (hasNew) {
+    if (seenJobs.length > 5000) seenJobs = seenJobs.slice(-5000);
+    localStorage.setItem('seenJobs', JSON.stringify(seenJobs));
+  }
+
   const lmw = document.getElementById('load-more-wrap');
   lmw.style.display = displayed < filteredJobs.length ? 'block' : 'none';
 }
@@ -966,12 +931,8 @@ function loadMore() { renderJobs(false); }
 function showEmptyState() {
   document.getElementById('job-list').innerHTML = `
     <div id="empty-state">
-      <div class="radar-icon">📡</div>
       <h2>No signals detected</h2>
       <p>No jobs match your current filters. Run a scan to pull fresh listings from all sources.</p>
-      <div class="cta-hint">
-        <span class="arrow">←</span> Hit SCAN to start the radar
-      </div>
     </div>
   `;
 }
