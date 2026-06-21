@@ -116,14 +116,10 @@ def scrape(
         loc = location if location else COUNTRY_DEFAULTS.get(cc, "")
         country_indeed = COUNTRY_INDEED.get(cc, "USA")
 
-        # Step 4: Randomized jittered delay to bypass LinkedIn throttling
+        # No artificial delay: blast through titles immediately
         import time
         import random
-        if is_manual:
-            jitter = random.uniform(0.1, 0.3) # Blast mode for manual speed
-        else:
-            jitter = random.uniform(2.0, 5.0) # Safe mode for background cron
-        time.sleep(jitter)
+        # Delay removed entirely per user request
 
         try:
             from jobspy import scrape_jobs
