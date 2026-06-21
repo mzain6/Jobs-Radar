@@ -167,7 +167,8 @@ def scrape(
             return []
 
     # Execute scraping for all selected combinations in parallel
-    workers = 12 if is_manual else 3
+    # Capped at 3 workers to prevent blowing past Render's 512MB memory limit
+    workers = 3
     with ThreadPoolExecutor(max_workers=workers) as executor:
         results = executor.map(scrape_title_country, tasks)
 
