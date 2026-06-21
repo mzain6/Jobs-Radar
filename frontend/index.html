@@ -909,7 +909,7 @@ function setResultCountry(c) {
     const btn = document.getElementById('rf-ct-' + cc);
     btn.className = (cc === c) ? (c === 'CA' ? 'active-teal' : 'active') : '';
   });
-  applyResultFilters();
+  loadJobs(true);
 }
 
 function setResultWorkMode(mode) {
@@ -920,7 +920,7 @@ function setResultWorkMode(mode) {
       btn.className = (m === mode) ? 'active' : '';
     }
   });
-  applyResultFilters();
+  loadJobs(true);
 }
 
 function applyResultFilters() {
@@ -1038,7 +1038,11 @@ async function loadJobs(showSkeleton = false) {
   }
   showActiveFilters();
   try {
-    const res  = await fetch('/api/jobs?limit=1000');
+    let url = `/api/jobs?limit=1000&country=${resultCountry}`;
+    if (resultWorkMode !== 'both') {
+      url += `&remote=${resultWorkMode === 'remote' ? 'true' : 'false'}`;
+    }
+    const res  = await fetch(url);
     const data = await res.json();
     allJobs   = data.jobs || [];
     applyResultFilters();
